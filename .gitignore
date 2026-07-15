@@ -1,7 +1,7 @@
 # Generated test artifacts (recreated by `node test/run.js`)
 test/sample-export.csv
 test/sample-report.xlsx
-test/screenshot.png
+test/*.png
 
 # Node
 node_modules/

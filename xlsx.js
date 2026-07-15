@@ -141,14 +141,17 @@
   // Per-column alignment (horizontal). Everything is vertically centered.
   var HALIGN = {
     action: 'center', classification: 'center', name: 'left', id: 'left',
-    type: 'center', owner: 'left', reason: 'left', notes: 'left'
+    type: 'center', owner: 'left', reason: 'left', notes: 'left', remarks: 'left'
   };
-  var WRAP_COLS = { reason: true };
-  // Column widths (Excel width units).
+  var WRAP_COLS = { reason: true };            // reason wraps; notes/remarks do not
+  var FIT_COLS = { notes: 1, remarks: 1 };     // widen to fit their content, no wrap
+  // Base column widths (Excel width units).
   var WIDTHS = {
     action: 12, classification: 14, name: 30, id: 18, type: 16, owner: 20,
-    reason: 42, notes: 42
+    reason: 42, notes: 42, remarks: 40
   };
+  // Group-level fields render only on the group's top row.
+  var GROUP_FIELDS = { action: 1, notes: 1, remarks: 1 };
 
   // ---- Worksheet XML --------------------------------------------------------
   function sheetXml(sheet, sm) {
@@ -225,33 +228,34 @@
         var cellsXml = '';
         for (var c = 0; c < nCols; c++) {
           var colDef = cols[c];
-          var val = rec[colDef.k];
+          // Group-level fields (Action / Notes / Remarks) render on the top row
+          // only; duplicate rows leave them blank.
+          var val = GROUP_FIELDS[colDef.k] ? (top ? group[colDef.k] : '') : rec[colDef.k];
           var s = dataXf(colDef, rec.isPrimary, top, bottom);
           cellsXml += styledCell(colLetter(c + 1) + rowNum, s, val == null ? '' : String(val));
         }
         pushRow(rowNum, cellsXml);
       });
-      validationRanges.push('A' + startRow + ':A' + rowNum);
+      // Action dropdown lives on the group's top row only.
+      validationRanges.push('A' + startRow);
     });
 
     var lastRow = rowNum < 3 ? 3 : rowNum;
 
-    // <cols> widths. The Notes column does not wrap, so widen it to fit its
-    // longest value (capped) and keep every note on a single line.
-    var notesWidth = 0;
-    if (cols.some(function (c) { return c.k === 'notes'; })) {
-      var maxLen = 'Notes'.length;
+    // <cols> widths. Fit-columns (Notes / Remarks) do not wrap, so widen them
+    // to fit their longest (group-level) value and keep every value on one line.
+    function fitWidth(key, label) {
+      var maxLen = label.length;
       sheet.groups.forEach(function (g) {
-        g.rows.forEach(function (r) {
-          var s = r.notes == null ? '' : String(r.notes);
-          if (s.length > maxLen) maxLen = s.length;
-        });
+        var s = g[key] == null ? '' : String(g[key]);
+        if (s.length > maxLen) maxLen = s.length;
       });
-      notesWidth = Math.min(120, Math.max(WIDTHS.notes, maxLen + 3));
+      return Math.min(120, Math.max(WIDTHS[key] || 16, maxLen + 3));
     }
     var colsXml = '<cols>';
     for (var cw = 0; cw < nCols; cw++) {
-      var w = (cols[cw].k === 'notes' && notesWidth) ? notesWidth : (WIDTHS[cols[cw].k] || 16);
+      var cd = cols[cw];
+      var w = FIT_COLS[cd.k] ? fitWidth(cd.k, cd.h) : (WIDTHS[cd.k] || 16);
       colsXml += '<col min="' + (cw + 1) + '" max="' + (cw + 1) + '" width="' + w + '" customWidth="1"/>';
     }
     colsXml += '</cols>';

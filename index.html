@@ -4,12 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
-  <!--
-    Content Security Policy: only allow resources from this same origin.
-    No external scripts, no network connections (connect-src 'none'), no
-    embedded frames. This is a hard guarantee that the uploaded CSV cannot
-    be sent anywhere — the browser will block any attempt to do so.
-  -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; connect-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'" />
   <title>Merchant Duplicates Report Producer</title>
@@ -17,88 +11,98 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Privacy: padlock in the top corner opens a popup -->
+  <button id="lockBtn" class="lock-btn" type="button" aria-label="Privacy information" aria-expanded="false">🔒</button>
+  <div id="privacyPop" class="privacy-pop" role="dialog" aria-label="Privacy" hidden>
+    <button id="privacyClose" class="pop-close" type="button" aria-label="Close">×</button>
+    <strong>Your data never leaves this page.</strong>
+    <p>
+      The CSV is read and the <code>.xlsx</code> report is built entirely in
+      your browser. Nothing is uploaded, stored, logged, or sent to any server —
+      a Content-Security-Policy on this page blocks all outbound connections.
+      You can even save this page and run it offline.
+    </p>
+  </div>
+
   <main class="wrap">
     <header class="page-head">
       <h1>Merchant Duplicates Report Producer</h1>
-      <p class="tagline">Turn a flagged-duplicates export into a sectioned review report.</p>
     </header>
 
-    <section class="privacy" aria-label="Privacy">
-      <span class="lock" aria-hidden="true">🔒</span>
-      <div>
-        <strong>Your data never leaves this page.</strong>
-        The CSV is read and the <code>.xlsx</code> report is built entirely in
-        your browser. Nothing is uploaded, stored, logged, or sent to any
-        server — a Content-Security-Policy on this page blocks all outbound
-        connections. You can even save this page and run it offline.
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>1. Upload the export CSV</h2>
-      <div id="dropzone" class="dropzone" tabindex="0" role="button"
-           aria-label="Upload CSV file. Click or drag and drop.">
-        <input id="fileInput" type="file" accept=".csv,text/csv" hidden />
-        <div class="dz-inner">
-          <div class="dz-icon" aria-hidden="true">⬆</div>
-          <div class="dz-text">
-            <strong>Click to choose a CSV</strong> or drag &amp; drop it here
+    <div class="top-row">
+      <section class="card upload-card">
+        <h2>Upload the export CSV</h2>
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload CSV file. Click or drag and drop.">
+          <input id="fileInput" type="file" accept=".csv,text/csv" hidden />
+          <div class="dz-inner">
+            <div class="dz-icon" aria-hidden="true">⬆</div>
+            <div class="dz-text"><strong>Click to choose a CSV</strong> or drag &amp; drop it here</div>
+            <div class="dz-hint">First row = column headings, records below.</div>
           </div>
-          <div class="dz-hint">Expected: the first row is column headings, records below.</div>
         </div>
-      </div>
-      <p id="fileName" class="file-name" hidden></p>
-      <p id="errorBox" class="error" role="alert" hidden></p>
-    </section>
+        <p id="fileName" class="file-name" hidden></p>
+        <p id="errorBox" class="error" role="alert" hidden></p>
+      </section>
 
-    <section id="results" class="results" hidden>
-      <section class="card">
+      <section class="card dash-card" id="dashCard" hidden>
         <div class="results-head">
-          <h2>2. Download your report</h2>
-          <button id="downloadBtn" class="btn primary" type="button">⬇ Download report (.xlsx)</button>
+          <h2>Report</h2>
+          <button id="downloadBtn" class="btn primary" type="button">⬇ Download (.xlsx)</button>
         </div>
-
         <div id="stats" class="stats" aria-label="Report summary"></div>
-
         <div id="warnings" class="warnings" hidden>
           <h3>Heads up</h3>
           <ul id="warningList"></ul>
         </div>
       </section>
+    </div>
 
-      <section class="card">
-        <h3>Column mapping (please verify)</h3>
-        <p class="muted">
-          Columns are read by position (spreadsheet letter), exactly as
-          specified. Confirm each detected header below matches what you expect.
-          If a header looks wrong, your export's column order differs from the
-          expected layout.
-        </p>
-        <div class="table-scroll">
-          <table id="mappingTable" class="grid">
-            <thead>
-              <tr><th>Report field</th><th>Column</th><th>Index</th><th>Detected header</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+    <section class="card viewer-card" id="viewer" hidden>
+      <div class="viewer-head">
+        <div class="tabs" id="sheetTabs" role="tablist" aria-label="Sheets"></div>
+        <div class="viewer-actions">
+          <label class="toggle"><input type="checkbox" id="detailToggle" /> Detailed view</label>
+          <button id="editBtn" class="btn" type="button">✎ Edit actions</button>
         </div>
-      </section>
-
-      <section class="card">
-        <h3>Preview</h3>
-        <p class="muted">
-          A preview of each sheet. The Primary record is bold and always the
-          top row of its group; groups are boxed and separated by a blank row —
-          matching the .xlsx.
-        </p>
-        <div id="previews"></div>
-      </section>
+      </div>
+      <div class="table-scroll"><table id="sheetTable" class="pv"></table></div>
     </section>
 
     <footer class="page-foot">
       <p>All processing is local. Built as a static site for GitHub Pages.</p>
     </footer>
   </main>
+
+  <!-- Full-screen edit-actions mode -->
+  <div id="editOverlay" class="edit-overlay" role="dialog" aria-label="Edit actions" hidden>
+    <div class="edit-top">
+      <div class="edit-title">
+        <span id="editSheet"></span>
+        <span id="editProgress" class="edit-progress"></span>
+      </div>
+      <div class="edit-top-actions">
+        <label class="toggle"><input type="checkbox" id="editDetailToggle" /> Detailed view</label>
+        <button id="editClose" class="btn" type="button">Done ✓</button>
+      </div>
+    </div>
+
+    <div class="edit-body">
+      <div id="editNote" class="edit-note" hidden></div>
+      <div class="edit-group-meta" id="editGroupMeta"></div>
+      <div class="table-scroll edit-records"><table id="editTable" class="pv"></table></div>
+      <div class="edit-remarks">
+        <label for="remarksInput">Remarks for this group</label>
+        <input id="remarksInput" type="text" placeholder="Optional note written to the report…" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="edit-nav">
+      <button id="prevGroup" class="nav-btn" type="button" aria-label="Previous group">‹</button>
+      <div id="actionButtons" class="action-buttons"></div>
+      <button id="nextGroup" class="nav-btn" type="button" aria-label="Next group">›</button>
+    </div>
+    <p class="edit-hint">Use ← / → to move between groups · Esc to finish</p>
+  </div>
 
   <script src="report.js"></script>
   <script src="xlsx.js"></script>

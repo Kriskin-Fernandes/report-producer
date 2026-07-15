@@ -20,14 +20,29 @@ groups records by **stripped domain (column U)**, classifies each group using
 the **Classification (column X)** value carried over from the input, and
 produces a workbook with **three sheets**, one per section. Every record keeps
 its own row (like the input); the **Primary** record in each group is
-identified by its Classification value and is emphasized with bold text and a
-colored row.
+identified by its Classification value, reordered to the **top** of its group,
+and emphasized with bold text.
 
 | Sheet | Theme | Membership | Columns |
 | --- | --- | --- | --- |
-| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Account ID, Type, Owner, Reason |
-| **Needs Attention** | light peach | Every other classified group. | Action, Classification, Account Name, Account ID, Type, Owner, Reason, **Notes** |
+| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Account ID, Type, Owner, Reason, Remarks |
+| **Needs Attention** | light peach | Every other classified group. | Action, Classification, Account Name, Account ID, Type, Owner, Reason, **Notes**, Remarks |
 | **Unclassified** | light gray | Groups whose records are all Unclassified (plus any group without a clean Primary). | Action, Classification, Account Name, Account ID, Type, Owner, **Notes** |
+
+## Using the app
+
+- A **padlock** button (top-right) opens the privacy notice.
+- The **Upload** and **Report** (summary + download) cards sit side by side.
+- A **tab selector** switches between full views of each sheet.
+- **Detailed view** (a toggle) adds every remaining input column — all columns
+  except U, V and Z, which are never shown — on-screen only. It does not change
+  the downloaded file.
+- **Edit actions** (on Likely duplicates and Needs Attention) opens a
+  full-screen mode that steps through the groups one at a time: the group's
+  accounts on top, four big buttons (Merge / Ignore / Evaluate / None) below,
+  and a **Remarks** field. Use **← / →** to move between groups, **Esc** to
+  finish. On Needs Attention the group's **Notes** are shown for context.
+  Chosen actions and remarks are written into the workbook on download.
 
 ## Formatting applied
 
@@ -38,8 +53,9 @@ colored row.
 - **Primary rows**: **always the top row of their group**, shown in **bold** with no background fill.
 - **Borders**: full grid on the header block, a box around each group, and vertical rules between every column (blank row between groups).
 - **Account ID** cells use a monospaced font (Consolas).
-- **Notes** column never wraps — it is widened to fit its longest value so each note stays on a single line.
-- **Action** column: a real Excel dropdown (`None`, `Merge`, `Evaluate`, `Ignore`), defaulting to `None`.
+- **Notes / Remarks** columns never wrap — each is widened to fit its longest value.
+- **Action** is one value **per group**, written on the group's top (primary) row with a real Excel dropdown (`None`, `Merge`, `Evaluate`, `Ignore`); duplicate rows are left blank.
+- **Remarks** (from edit mode) are written on the group's top row, in the added Remarks column.
 - Top three rows are frozen so headers stay visible while scrolling.
 
 ### Notes column
@@ -55,9 +71,9 @@ colored row.
 
 ## Column mapping (read by position / spreadsheet letter)
 
-Columns are read by **position**, matching the spreadsheet letters. After you
-upload, the site shows a **mapping panel** listing the header it detected at
-each position so you can confirm the layout matches.
+Columns are read by **position**, matching the spreadsheet letters below. If a
+real export's column order differs from this layout, the values will land in the
+wrong report columns — check your export matches.
 
 | Field | Column | Index (0-based) |
 | --- | --- | --- |
