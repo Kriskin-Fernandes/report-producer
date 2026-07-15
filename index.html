@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <!--
+    Content Security Policy: only allow resources from this same origin.
+    No external scripts, no network connections (connect-src 'none'), no
+    embedded frames. This is a hard guarantee that the uploaded CSV cannot
+    be sent anywhere — the browser will block any attempt to do so.
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'" />
+  <title>Merchant Duplicates Report Producer</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="page-head">
+      <h1>Merchant Duplicates Report Producer</h1>
+      <p class="tagline">Turn a flagged-duplicates export into a sectioned review report.</p>
+    </header>
+
+    <section class="privacy" aria-label="Privacy">
+      <span class="lock" aria-hidden="true">🔒</span>
+      <div>
+        <strong>Your data never leaves this page.</strong>
+        The CSV is read and processed entirely in your browser using the
+        <code>FileReader</code> API. Nothing is uploaded, stored, logged, or
+        sent to any server — a Content-Security-Policy on this page blocks all
+        outbound connections. You can even save this page and run it offline.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>1. Upload the export CSV</h2>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button"
+           aria-label="Upload CSV file. Click or drag and drop.">
+        <input id="fileInput" type="file" accept=".csv,text/csv" hidden />
+        <div class="dz-inner">
+          <div class="dz-icon" aria-hidden="true">⬆</div>
+          <div class="dz-text">
+            <strong>Click to choose a CSV</strong> or drag &amp; drop it here
+          </div>
+          <div class="dz-hint">Expected: the first row is column headings, records below.</div>
+        </div>
+      </div>
+      <p id="fileName" class="file-name" hidden></p>
+      <p id="errorBox" class="error" role="alert" hidden></p>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <section class="card">
+        <div class="results-head">
+          <h2>2. Download your report</h2>
+          <button id="downloadBtn" class="btn primary" type="button">⬇ Download report CSV</button>
+        </div>
+
+        <div id="stats" class="stats" aria-label="Report summary"></div>
+
+        <div id="warnings" class="warnings" hidden>
+          <h3>Heads up</h3>
+          <ul id="warningList"></ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Column mapping (please verify)</h3>
+        <p class="muted">
+          Columns are read by position (spreadsheet letter), exactly as
+          specified. Confirm each detected header below matches what you expect.
+          If a header looks wrong, your export's column order differs from the
+          expected layout.
+        </p>
+        <div class="table-scroll">
+          <table id="mappingTable" class="grid">
+            <thead>
+              <tr><th>Report field</th><th>Column</th><th>Index</th><th>Detected header</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Preview</h3>
+        <p class="muted">First rows of the generated report (section titles span the full width).</p>
+        <div class="table-scroll">
+          <table id="previewTable" class="grid preview"><tbody></tbody></table>
+        </div>
+        <p id="previewMore" class="muted" hidden></p>
+      </section>
+    </section>
+
+    <footer class="page-foot">
+      <p>All processing is local. Built as a static site for GitHub Pages.</p>
+    </footer>
+  </main>
+
+  <script src="report.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
