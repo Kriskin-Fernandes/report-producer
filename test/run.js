@@ -80,11 +80,20 @@ var delta = attention.groups[1];
 var deltaPrimary = delta.rows.filter(function (r) { return r.isPrimary; })[0];
 eq(deltaPrimary.notes, 'has country conflict, VAT number mismatch', 'Delta notes = conflict + complexity extra');
 
-// Epsilon (section 2): primary is second row; rel + conflict + complexity extra
+// Epsilon (section 2): primary was second in the input but is reordered to the
+// top; rel + conflict + complexity extra on the (now top) primary row.
 var epsilon = attention.groups[2];
-assert(epsilon.rows[0].isPrimary === false && epsilon.rows[1].isPrimary === true, 'Epsilon primary is second row');
-eq(epsilon.rows[1].notes, 'has relationship, has country conflict, needs finance sign-off', 'Epsilon combined notes');
-eq(epsilon.rows[0].notes, '', 'Epsilon non-primary note empty');
+assert(epsilon.rows[0].isPrimary === true && epsilon.rows[1].isPrimary === false, 'Epsilon primary reordered to top row');
+eq(epsilon.rows[0].id, 'ACC-040', 'Epsilon top row is the primary account (ACC-040)');
+eq(epsilon.rows[0].notes, 'has relationship, has country conflict, needs finance sign-off', 'Epsilon combined notes on top row');
+eq(epsilon.rows[1].notes, '', 'Epsilon non-primary note empty');
+
+// Every classified group has its primary as the top row.
+[likely, attention].forEach(function (sh) {
+  sh.groups.forEach(function (g, gi) {
+    assert(g.rows[0].isPrimary === true, sh.title + ' group ' + (gi + 1) + ' has primary on top row');
+  });
+});
 
 // Unclassified: Zeta group of 3, no primaries, relationship note on first row
 var zeta = unclassified.groups[0];

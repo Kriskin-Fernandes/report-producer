@@ -35,9 +35,10 @@ colored row.
 - **Section description** row: merged, 15pt *italic*, Calibri.
 - **Column headers**: bold.
 - **Fill** on the header / description / column-heading rows: `HSV(hue, 20% saturation, 100% value)` — hue per sheet (blue / peach; gray uses a neutral light gray).
-- **Primary rows**: bold, filled with the sheet's theme color.
+- **Primary rows**: **always the top row of their group**, shown in **bold** with no background fill.
 - **Borders**: full grid on the header block, a box around each group, and vertical rules between every column (blank row between groups).
 - **Account ID** cells use a monospaced font (Consolas).
+- **Notes** column never wraps — it is widened to fit its longest value so each note stays on a single line.
 - **Action** column: a real Excel dropdown (`None`, `Merge`, `Evaluate`, `Ignore`), defaulting to `None`.
 - Top three rows are frozen so headers stay visible while scrolling.
 

@@ -143,7 +143,7 @@
     action: 'center', classification: 'center', name: 'left', id: 'left',
     type: 'center', owner: 'left', reason: 'left', notes: 'left'
   };
-  var WRAP_COLS = { reason: true, notes: true };
+  var WRAP_COLS = { reason: true };
   // Column widths (Excel width units).
   var WIDTHS = {
     action: 12, classification: 14, name: 30, id: 18, type: 16, owner: 20,
@@ -158,7 +158,6 @@
     var theme = sheet.theme;
 
     var headerFillId = sm.solidFill(theme.headerFill);
-    var primaryFillId = sm.solidFill(theme.primaryFill);
     var allBorder = sm.border({ l: 1, r: 1, t: 1, b: 1 });
 
     // Header / description / column-heading styles.
@@ -169,12 +168,12 @@
     var xfHeadCell = sm.xf({ fontId: sm.font({ size: 11, bold: true }), fillId: headerFillId, borderId: allBorder, halign: 'center', valign: 'center' });
 
     // Data-cell style resolver (dedups automatically via the manager).
+    // Primary rows are bold but carry no background fill.
     function dataXf(colDef, isPrimary, top, bottom) {
       var fontId = sm.font({ size: 11, bold: !!isPrimary, mono: !!colDef.id });
-      var fillId = isPrimary ? primaryFillId : 0;
       var borderId = sm.border({ l: 1, r: 1, t: !!top, b: !!bottom });
       return sm.xf({
-        fontId: fontId, fillId: fillId, borderId: borderId,
+        fontId: fontId, fillId: 0, borderId: borderId,
         halign: HALIGN[colDef.k] || 'left', valign: 'center', wrap: !!WRAP_COLS[colDef.k]
       });
     }
@@ -237,11 +236,23 @@
 
     var lastRow = rowNum < 3 ? 3 : rowNum;
 
-    // <cols> widths.
+    // <cols> widths. The Notes column does not wrap, so widen it to fit its
+    // longest value (capped) and keep every note on a single line.
+    var notesWidth = 0;
+    if (cols.some(function (c) { return c.k === 'notes'; })) {
+      var maxLen = 'Notes'.length;
+      sheet.groups.forEach(function (g) {
+        g.rows.forEach(function (r) {
+          var s = r.notes == null ? '' : String(r.notes);
+          if (s.length > maxLen) maxLen = s.length;
+        });
+      });
+      notesWidth = Math.min(120, Math.max(WIDTHS.notes, maxLen + 3));
+    }
     var colsXml = '<cols>';
     for (var cw = 0; cw < nCols; cw++) {
-      colsXml += '<col min="' + (cw + 1) + '" max="' + (cw + 1) + '" width="' +
-        (WIDTHS[cols[cw].k] || 16) + '" customWidth="1"/>';
+      var w = (cols[cw].k === 'notes' && notesWidth) ? notesWidth : (WIDTHS[cols[cw].k] || 16);
+      colsXml += '<col min="' + (cw + 1) + '" max="' + (cw + 1) + '" width="' + w + '" customWidth="1"/>';
     }
     colsXml += '</cols>';
 

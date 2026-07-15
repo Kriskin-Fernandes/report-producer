@@ -167,10 +167,10 @@ html, body {
 .pv .blank td { border: none; height: 10px; background: #fff; padding: 0; }
 .pv .empty td, .pv .more td { text-align: center; color: var(--muted); font-style: italic; }
 
-/* Theme fills — header band + primary rows share the theme color */
-.theme-blue .pv .title td, .theme-blue .pv .desc td, .theme-blue .pv .head td, .theme-blue .pv .primary td { background: #CCE6FF; }
-.theme-peach .pv .title td, .theme-peach .pv .desc td, .theme-peach .pv .head td, .theme-peach .pv .primary td { background: #FFE1CC; }
-.theme-gray .pv .title td, .theme-gray .pv .desc td, .theme-gray .pv .head td, .theme-gray .pv .primary td { background: #E6E6E6; }
+/* Theme fills — header band only (primary rows are bold, not filled) */
+.theme-blue .pv .title td, .theme-blue .pv .desc td, .theme-blue .pv .head td { background: #CCE6FF; }
+.theme-peach .pv .title td, .theme-peach .pv .desc td, .theme-peach .pv .head td { background: #FFE1CC; }
+.theme-gray .pv .title td, .theme-gray .pv .desc td, .theme-gray .pv .head td { background: #E6E6E6; }
 
 .page-foot { text-align: center; color: #64748b; font-size: .85rem; margin-top: 8px; }
 

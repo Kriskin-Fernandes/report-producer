@@ -238,9 +238,13 @@
       if (notesMode === 'attention') noteText = buildNotes(g, true);
       else if (notesMode === 'unclassified') noteText = buildNotes(g, false);
 
-      var repIndex = g.primary ? g.records.indexOf(g.primary) : 0;
+      // Primary is always the top row; the rest keep their original order.
+      var ordered = g.primary
+        ? [g.primary].concat(g.records.filter(function (r) { return r !== g.primary; }))
+        : g.records;
 
-      var rows = g.records.map(function (rec, idx) {
+      // The group-level note sits on the representative (top) row.
+      var rows = ordered.map(function (rec, idx) {
         return {
           action: 'None',
           classification: norm(cell(rec, COL.classification)),
@@ -249,7 +253,7 @@
           type: cell(rec, COL.type),
           owner: cell(rec, COL.owner),
           reason: cell(rec, COL.reason),
-          notes: idx === repIndex ? noteText : '',
+          notes: idx === 0 ? noteText : '',
           isPrimary: eqi(cell(rec, COL.classification), 'primary')
         };
       });
