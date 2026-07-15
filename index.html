@@ -27,10 +27,10 @@
       <span class="lock" aria-hidden="true">🔒</span>
       <div>
         <strong>Your data never leaves this page.</strong>
-        The CSV is read and processed entirely in your browser using the
-        <code>FileReader</code> API. Nothing is uploaded, stored, logged, or
-        sent to any server — a Content-Security-Policy on this page blocks all
-        outbound connections. You can even save this page and run it offline.
+        The CSV is read and the <code>.xlsx</code> report is built entirely in
+        your browser. Nothing is uploaded, stored, logged, or sent to any
+        server — a Content-Security-Policy on this page blocks all outbound
+        connections. You can even save this page and run it offline.
       </div>
     </section>
 
@@ -55,7 +55,7 @@
       <section class="card">
         <div class="results-head">
           <h2>2. Download your report</h2>
-          <button id="downloadBtn" class="btn primary" type="button">⬇ Download report CSV</button>
+          <button id="downloadBtn" class="btn primary" type="button">⬇ Download report (.xlsx)</button>
         </div>
 
         <div id="stats" class="stats" aria-label="Report summary"></div>
@@ -86,11 +86,11 @@
 
       <section class="card">
         <h3>Preview</h3>
-        <p class="muted">First rows of the generated report (section titles span the full width).</p>
-        <div class="table-scroll">
-          <table id="previewTable" class="grid preview"><tbody></tbody></table>
-        </div>
-        <p id="previewMore" class="muted" hidden></p>
+        <p class="muted">
+          A preview of each sheet. Primary records are bold and shaded; groups
+          are boxed and separated by a blank row — matching the .xlsx.
+        </p>
+        <div id="previews"></div>
       </section>
     </section>
 
@@ -100,6 +100,7 @@
   </main>
 
   <script src="report.js"></script>
+  <script src="xlsx.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

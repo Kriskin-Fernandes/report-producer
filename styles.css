@@ -152,13 +152,25 @@ html, body {
 .grid tbody tr:last-child td { border-bottom: none; }
 .grid.preview td { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-.preview .section-title td {
-  background: #0f172a; color: #fff; font-weight: 700; font-family: inherit;
-  letter-spacing: .02em;
-}
-.preview .section-desc td { background: #f8fafc; color: var(--muted); font-style: italic; font-family: inherit; }
-.preview .heading-row td { background: #eef2ff; font-weight: 600; font-family: inherit; }
-.preview .blank-row td { height: 8px; background: #fbfdff; }
+/* Per-sheet previews */
+.sheet-preview { margin-bottom: 22px; }
+.sheet-preview h4 { margin: 0 0 8px; font-size: 1rem; }
+.sheet-preview h4 .muted { font-weight: 400; font-size: .85rem; }
+
+.pv { border-collapse: collapse; width: 100%; font-size: .82rem; }
+.pv td { border: 1px solid #cbd5e1; padding: 6px 9px; white-space: nowrap; }
+.pv .title td { font-weight: 700; text-align: center; font-size: 1.05rem; padding: 10px; }
+.pv .desc td { font-style: italic; text-align: center; color: #475569; }
+.pv .head td { font-weight: 700; text-align: center; }
+.pv .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.pv .primary td { font-weight: 700; }
+.pv .blank td { border: none; height: 10px; background: #fff; padding: 0; }
+.pv .empty td, .pv .more td { text-align: center; color: var(--muted); font-style: italic; }
+
+/* Theme fills — header band + primary rows share the theme color */
+.theme-blue .pv .title td, .theme-blue .pv .desc td, .theme-blue .pv .head td, .theme-blue .pv .primary td { background: #CCE6FF; }
+.theme-peach .pv .title td, .theme-peach .pv .desc td, .theme-peach .pv .head td, .theme-peach .pv .primary td { background: #FFE1CC; }
+.theme-gray .pv .title td, .theme-gray .pv .desc td, .theme-gray .pv .head td, .theme-gray .pv .primary td { background: #E6E6E6; }
 
 .page-foot { text-align: center; color: #64748b; font-size: .85rem; margin-top: 8px; }
 
