@@ -49,7 +49,11 @@
   function makeField(id, label, kind, o) {
     o = o || {};
     return {
-      id: id, label: label, kind: kind,
+      id: id, label: label,
+      // defaultLabel is the original name (from the CSV header or the built-in
+      // label); the customize panel can rename `label` and revert to this.
+      defaultLabel: o.defaultLabel != null ? o.defaultLabel : label,
+      kind: kind,
       src: o.src == null ? null : o.src,
       group: !!o.group, mono: !!o.mono, link: !!o.link,
       wrap: !!o.wrap, fit: !!o.fit,
@@ -57,7 +61,7 @@
     };
   }
   function cloneField(f) {
-    return { id: f.id, label: f.label, kind: f.kind, src: f.src, group: f.group,
+    return { id: f.id, label: f.label, defaultLabel: f.defaultLabel, kind: f.kind, src: f.src, group: f.group,
       mono: f.mono, link: f.link, wrap: f.wrap, fit: f.fit, align: f.align, width: f.width };
   }
 
@@ -92,9 +96,23 @@
 
   // Resolve a field's display value for a given row (rowIndex within its group).
   function fieldValue(f, group, row, ri) {
+    // Opportunities is a per-row summary computed by app.js (from the optional
+    // Opportunities CSV) and stashed on the row as `oppsSummary`.
+    if (f.kind === 'opportunities') return (row && row.oppsSummary) || '';
     if (f.group) return ri === 0 ? (group[f.id] || '') : '';
     if (f.kind === 'classification') return row.classification || '';
     return norm(row.raw ? row.raw[f.src] : '');
+  }
+
+  // Reorder a group's rows so the Primary is the top row (the rest keep their
+  // relative order). Used to reorder "offscreen" after the user leaves a group
+  // in edit mode, so the on-screen order never jumps while a group is visible.
+  function reorderPrimaryTop(group) {
+    if (!group || !group.rows || !group.rows.length) return;
+    var primary = null;
+    for (var i = 0; i < group.rows.length; i++) { if (group.rows[i].isPrimary) { primary = group.rows[i]; break; } }
+    if (!primary) return;
+    group.rows = [primary].concat(group.rows.filter(function (r) { return r !== primary; }));
   }
 
   // Fields shown on screen and exported (above the cutoff).
@@ -287,7 +305,8 @@
     COL: COL, THEME: THEME, ACTION_OPTIONS: ACTION_OPTIONS, NEVER_SHOW: NEVER_SHOW,
     SALESFORCE_BASE: SALESFORCE_BASE,
     parseCSV: parseCSV, toCSV: toCSV, buildReport: buildReport, letterFor: letterFor,
-    fieldValue: fieldValue, displayedFields: displayedFields, cloneField: cloneField
+    fieldValue: fieldValue, displayedFields: displayedFields, cloneField: cloneField,
+    makeField: makeField, reorderPrimaryTop: reorderPrimaryTop
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.ReportProducer = api;

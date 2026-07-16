@@ -19,6 +19,7 @@
 
   var els = {
     fileInput: $('fileInput'), dropzone: $('dropzone'), fileName: $('fileName'), errorBox: $('errorBox'),
+    oppsInput: $('oppsInput'), oppsBtn: $('oppsBtn'), oppsName: $('oppsName'), oppsClear: $('oppsClear'),
     lockBtn: $('lockBtn'), privacyPop: $('privacyPop'), privacyClose: $('privacyClose'),
     dashCard: $('dashCard'), stats: $('stats'), warnings: $('warnings'), warningList: $('warningList'),
     downloadBtn: $('downloadBtn'),
@@ -29,14 +30,19 @@
     editPrimaryName: $('editPrimaryName'), editTags: $('editTags'), editGroupMeta: $('editGroupMeta'),
     editTable: $('editTable'), remarksInput: $('remarksInput'),
     prevGroup: $('prevGroup'), nextGroup: $('nextGroup'), actionButtons: $('actionButtons'),
-    customizeOverlay: $('customizeOverlay'), cfTitle: $('cfTitle'), cfClose: $('cfClose'), cfList: $('cfList')
+    customizeOverlay: $('customizeOverlay'), cfTitle: $('cfTitle'), cfClose: $('cfClose'),
+    cfRevert: $('cfRevert'), cfShown: $('cfShown'), cfHidden: $('cfHidden'),
+    oppsOverlay: $('oppsOverlay'), oppsTitle: $('oppsTitle'), oppsClose: $('oppsClose'), oppsTable: $('oppsTable')
   };
 
   var state = {
     result: null,
     activeSheet: 0,
     edit: { active: false, sheet: 0, group: 0 },
-    cfSheet: 0
+    cfSheet: 0,
+    cfEditingId: null,       // field id whose name is being edited inline
+    opps: null,              // { byAccount: {id: [opp...]}, count, computedAt }
+    oppsName: ''
   };
 
   var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -59,6 +65,13 @@
   els.dropzone.addEventListener('drop', function (e) {
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
+
+  // ---- Opportunities CSV (optional second upload) --------------------------
+  els.oppsBtn.addEventListener('click', function () { els.oppsInput.click(); });
+  els.oppsInput.addEventListener('change', function () {
+    if (els.oppsInput.files && els.oppsInput.files[0]) handleOppsFile(els.oppsInput.files[0]);
+  });
+  els.oppsClear.addEventListener('click', clearOpps);
 
   // ---- Privacy popup -------------------------------------------------------
   els.lockBtn.addEventListener('click', function (e) {
@@ -98,6 +111,33 @@
   els.customizeBtn.addEventListener('click', function () { openCustomize(); });
   els.editCustomizeBtn.addEventListener('click', function () { openCustomize(); });
 
+  // ---- Opportunities popup -------------------------------------------------
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.opps-bubble');
+    if (!b || b.classList.contains('zero')) return;
+    openOppsPopup(b.getAttribute('data-acct'));
+  });
+  els.oppsClose.addEventListener('click', function () { els.oppsOverlay.hidden = true; });
+  els.oppsOverlay.addEventListener('click', function (e) { if (e.target === els.oppsOverlay) els.oppsOverlay.hidden = true; });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !els.oppsOverlay.hidden) els.oppsOverlay.hidden = true;
+  });
+
+  function openOppsPopup(acct) {
+    var list = (state.opps && state.opps.byAccount[acct]) || [];
+    els.oppsTitle.textContent = 'Opportunities for ' + acct + ' (' + list.length + ')';
+    var head = '<tr class="head"><td>Opportunity ID</td><td>Opportunity owner</td><td>Last modified date</td><td>Owner role</td></tr>';
+    var body = list.map(function (o) {
+      var link = o.id
+        ? '<a href="' + esc(SF + encodeURIComponent(o.id)) + '" target="_blank" rel="noopener noreferrer">' + esc(o.id) + '</a>'
+        : '';
+      return '<tr><td class="mono">' + link + '</td><td>' + esc(o.owner) + '</td><td>' +
+        esc(o.modifiedRaw) + '</td><td>' + esc(o.role) + '</td></tr>';
+    }).join('');
+    els.oppsTable.innerHTML = head + (body || '<tr class="empty"><td colspan="4">No opportunities.</td></tr>');
+    els.oppsOverlay.hidden = false;
+  }
+
   // ---- Edit-mode controls --------------------------------------------------
   els.editClose.addEventListener('click', closeEdit);
   els.prevGroup.addEventListener('click', function () { navGroup(-1); });
@@ -112,7 +152,7 @@
     setPrimary(parseInt(r.getAttribute('data-row'), 10));
   });
   document.addEventListener('keydown', function (e) {
-    if (!state.edit.active || !els.customizeOverlay.hidden) return;
+    if (!state.edit.active || !els.customizeOverlay.hidden || !els.oppsOverlay.hidden) return;
     if (e.key === 'Escape') { closeEdit(); return; }
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     if (e.target === els.remarksInput) {
@@ -144,6 +184,7 @@
     state.result = RP.buildReport(RP.parseCSV(text));
     state.activeSheet = 0;
     lastName = deriveName(name);
+    if (state.opps) applyOpps(); // re-attach opportunities to the fresh model
     renderStats(state.result.stats);
     renderWarnings(state.result.warnings);
     buildTabs();
@@ -151,6 +192,150 @@
     els.dashCard.hidden = false;
     els.viewer.hidden = false;
     els.viewer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ---- Opportunities: parse, index, attach --------------------------------
+  var OPP = { id: 0, owner: 2, role: 3, account: 5, modified: 23 }; // cols A,C,D,F,X
+
+  function handleOppsFile(file) {
+    var reader = new FileReader();
+    reader.onerror = function () { showError('Could not read the Opportunities file.'); };
+    reader.onload = function () {
+      try {
+        var rows = RP.parseCSV(String(reader.result));
+        state.opps = indexOpps(rows);
+        state.oppsName = file.name;
+        els.oppsName.hidden = false;
+        els.oppsName.innerHTML = 'Opportunities: <strong>' + esc(file.name) + '</strong> (' + state.opps.count + ' linked to ' + Object.keys(state.opps.byAccount).length + ' account(s))';
+        els.oppsClear.hidden = false;
+        if (state.result) { applyOpps(); rerenderActive(); }
+      } catch (err) {
+        showError((err && err.message) || 'Could not process the Opportunities file.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearOpps() {
+    state.opps = null; state.oppsName = '';
+    els.oppsInput.value = '';
+    els.oppsName.hidden = true; els.oppsName.innerHTML = '';
+    els.oppsClear.hidden = true;
+    if (state.result) {
+      state.result.sheets.forEach(removeOppsField);
+      state.result.sheets.forEach(function (s) {
+        s.groups.forEach(function (g) { g.rows.forEach(function (r) { r.opps = null; r.oppsSummary = ''; }); });
+      });
+      rerenderActive();
+    }
+  }
+
+  // Index opportunity rows by Account ID; sort each account's list by last
+  // modified date, most recent first.
+  function indexOpps(rows) {
+    var byAccount = Object.create(null), count = 0;
+    var now = new Date();
+    for (var i = 1; i < rows.length; i++) { // skip header
+      var r = rows[i];
+      if (!r || r.every(function (c) { return String(c == null ? '' : c).trim() === ''; })) continue;
+      var acct = String(r[OPP.account] == null ? '' : r[OPP.account]).trim();
+      if (acct === '') continue;
+      var modifiedRaw = String(r[OPP.modified] == null ? '' : r[OPP.modified]).trim();
+      var opp = {
+        id: String(r[OPP.id] == null ? '' : r[OPP.id]).trim(),
+        owner: String(r[OPP.owner] == null ? '' : r[OPP.owner]).trim(),
+        role: String(r[OPP.role] == null ? '' : r[OPP.role]).trim(),
+        account: acct,
+        modifiedRaw: modifiedRaw,
+        modified: parseMDY(modifiedRaw)
+      };
+      (byAccount[acct] || (byAccount[acct] = [])).push(opp);
+      count++;
+    }
+    Object.keys(byAccount).forEach(function (k) {
+      byAccount[k].sort(function (a, b) {
+        var ta = a.modified ? a.modified.getTime() : -Infinity;
+        var tb = b.modified ? b.modified.getTime() : -Infinity;
+        return tb - ta;
+      });
+    });
+    return { byAccount: byAccount, count: count, computedAt: now };
+  }
+
+  // Attach an Opportunities column + per-row summaries to every sheet.
+  function applyOpps() {
+    if (!state.result || !state.opps) return;
+    var now = state.opps.computedAt;
+    state.result.sheets.forEach(function (sheet) {
+      ensureOppsField(sheet);
+      sheet.groups.forEach(function (g) {
+        g.rows.forEach(function (row) {
+          var acct = row.raw ? String(row.raw[RP.COL.accountId] == null ? '' : row.raw[RP.COL.accountId]).trim() : '';
+          var list = acct ? state.opps.byAccount[acct] : null;
+          row.opps = list || [];
+          row.oppsSummary = oppsSummary(list, now);
+        });
+      });
+    });
+  }
+
+  function ensureOppsField(sheet) {
+    if (sheet.fields.some(function (f) { return f.id === 'opps'; })) return;
+    var f = RP.makeField('opps', 'Opportunities', 'opportunities', { align: 'center', width: 22 });
+    // Insert just before Remarks if it's displayed, else at the end of the
+    // displayed region.
+    var remIdx = -1;
+    sheet.fields.forEach(function (x, i) { if (x.id === 'remarks' && remIdx < 0) remIdx = i; });
+    var at = (remIdx >= 0 && remIdx < sheet.displayCount) ? remIdx : sheet.displayCount;
+    sheet.fields.splice(at, 0, f);
+    sheet.displayCount += 1;
+  }
+
+  function removeOppsField(sheet) {
+    var idx = -1;
+    sheet.fields.forEach(function (x, i) { if (x.id === 'opps' && idx < 0) idx = i; });
+    if (idx < 0) return;
+    sheet.fields.splice(idx, 1);
+    if (idx < sheet.displayCount) sheet.displayCount -= 1;
+  }
+
+  function oppsSummary(list, now) {
+    if (!list || !list.length) return '0';
+    var latest = null;
+    list.forEach(function (o) { if (o.modified && (!latest || o.modified > latest)) latest = o.modified; });
+    return list.length + ' - ' + (latest ? timeAgo(latest, now) : 'date unknown');
+  }
+
+  function parseMDY(s) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return null;
+    var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (m) {
+      var yr = +m[3]; if (yr < 100) yr += 2000;
+      var d = new Date(yr, (+m[1]) - 1, +m[2]);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    var d2 = new Date(s);
+    return isNaN(d2.getTime()) ? null : d2;
+  }
+
+  function timeAgo(date, now) {
+    var ms = now.getTime() - date.getTime();
+    if (ms < 0) ms = 0;
+    var day = Math.floor(ms / 86400000);
+    var yr = Math.floor(day / 365), mo = Math.floor(day / 30), wk = Math.floor(day / 7);
+    var hr = Math.floor(ms / 3600000), min = Math.floor(ms / 60000);
+    if (yr >= 1) return yr + (yr > 1 ? ' years' : ' year') + ' ago';
+    if (mo >= 1) return mo + (mo > 1 ? ' months' : ' month') + ' ago';
+    if (wk >= 1) return wk + (wk > 1 ? ' weeks' : ' week') + ' ago';
+    if (day >= 1) return day + (day > 1 ? ' days' : ' day') + ' ago';
+    if (hr >= 1) return hr + (hr > 1 ? ' hours' : ' hour') + ' ago';
+    if (min >= 1) return min + (min > 1 ? ' minutes' : ' minute') + ' ago';
+    return 'just now';
+  }
+
+  function rerenderActive() {
+    if (state.edit.active) renderEditGroup(); else renderSheet();
   }
 
   function renderStats(s) {
@@ -194,6 +379,7 @@
 
   // ---- Cell rendering (shared) --------------------------------------------
   function td(field, group, row, ri) {
+    if (field.kind === 'opportunities') return oppsCell(row);
     var val = RP.fieldValue(field, group, row, ri);
     if (field.link && val) {
       var href = SF + encodeURIComponent(val);
@@ -201,6 +387,17 @@
     }
     var cls = field.mono ? 'mono' : '';
     return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(val) + '</td>';
+  }
+
+  // Opportunities cell: a bubble with "<count> - <time-ago>". Non-zero bubbles
+  // are clickable and open a popup listing the account's opportunities.
+  function oppsCell(row) {
+    var list = (row && row.opps) || [];
+    var summary = (row && row.oppsSummary) || '0';
+    if (!list.length) return '<td class="opps-cell"><span class="opps-bubble zero">0</span></td>';
+    var acct = row.raw ? String(row.raw[RP.COL.accountId] == null ? '' : row.raw[RP.COL.accountId]).trim() : '';
+    return '<td class="opps-cell"><button type="button" class="opps-bubble" data-acct="' + esc(acct) +
+      '" title="View opportunities">' + esc(summary) + '</button></td>';
   }
 
   function renderSheet() {
@@ -239,6 +436,8 @@
   }
 
   function closeEdit() {
+    // Leaving the group: apply the primary-to-top reorder offscreen.
+    RP.reorderPrimaryTop(currentGroup());
     state.edit.active = false;
     els.editOverlay.hidden = true;
     renderSheet();
@@ -248,6 +447,9 @@
     var sheet = currentSheet();
     var next = state.edit.group + delta;
     if (next < 0 || next >= sheet.groups.length) return;
+    // Reorder the group we're leaving offscreen, so its rows show the primary
+    // on top next time it's viewed — but never while it's on screen.
+    RP.reorderPrimaryTop(currentGroup());
     state.edit.group = next;
     renderEditGroup();
   }
@@ -272,8 +474,9 @@
       r.isPrimary = i === idx;
       r.classification = i === idx ? 'Primary' : 'Duplicate';
     });
-    var chosen = g.rows[idx];
-    g.rows = [chosen].concat(g.rows.filter(function (r) { return r !== chosen; }));
+    // NOTE: rows are intentionally NOT reordered here. Watching rows swap while
+    // the group is on screen is jarring; the primary-to-top reorder happens
+    // offscreen (navGroup / closeEdit). Export always puts the primary on top.
     renderEditGroup();
     // Unclassified auto-advances only once both an action and a primary are set.
     if (currentSheet().key === 'unclassified' && shouldAutoNext(g, currentSheet())) scheduleNext();
@@ -339,48 +542,109 @@
     els.nextGroup.disabled = idx === sheet.groups.length - 1;
   }
 
-  // ---- Customize data (drag to reorder / show / hide) ----------------------
+  // ---- Customize data (two lists: displayed / hidden; drag + rename) -------
   var dragEl = null;
 
   function openCustomize() {
     state.cfSheet = state.edit.active ? state.edit.sheet : state.activeSheet;
+    state.cfEditingId = null;
     els.cfTitle.textContent = 'Customize: ' + state.result.sheets[state.cfSheet].title;
-    renderCfList();
+    renderCfLists();
     els.customizeOverlay.hidden = false;
   }
-  els.cfClose.addEventListener('click', function () { els.customizeOverlay.hidden = true; });
-
-  function cfDivider() { return '<li class="cf-divider" data-divider="1">— display cutoff (shown above · hidden below) —</li>'; }
-  function renderCfList() {
+  els.cfClose.addEventListener('click', function () {
+    if (state.cfEditingId) commitRename();
+    els.customizeOverlay.hidden = true;
+  });
+  els.cfRevert.addEventListener('click', function () {
     var sheet = state.result.sheets[state.cfSheet];
-    var html = '';
-    sheet.fields.forEach(function (f, i) {
-      if (i === sheet.displayCount) html += cfDivider();
-      html += '<li class="cf-item" draggable="true" data-id="' + esc(f.id) + '"><span class="cf-grip" aria-hidden="true">⠿</span>' + esc(f.label) + '</li>';
-    });
-    if (sheet.displayCount >= sheet.fields.length) html += cfDivider();
-    els.cfList.innerHTML = html;
+    sheet.fields.forEach(function (f) { f.label = f.defaultLabel; });
+    state.cfEditingId = null;
+    renderCfLists();
+    rerenderActive();
+  });
+
+  function cfItemHtml(f) {
+    if (state.cfEditingId === f.id) {
+      return '<li class="cf-item editing" data-id="' + esc(f.id) + '">' +
+        '<span class="cf-grip" aria-hidden="true">⠿</span>' +
+        '<input class="cf-rename-input" type="text" value="' + esc(f.label) + '" aria-label="Field name" autocomplete="off" />' +
+        '<button type="button" class="cf-rename-ok" aria-label="Save name" title="Save">✓</button>' +
+        '</li>';
+    }
+    var renamed = f.label !== f.defaultLabel;
+    return '<li class="cf-item" draggable="true" data-id="' + esc(f.id) + '">' +
+      '<span class="cf-grip" aria-hidden="true">⠿</span>' +
+      '<span class="cf-label' + (renamed ? ' renamed' : '') + '"' +
+      (renamed ? ' title="Renamed from ' + esc(f.defaultLabel) + '"' : '') + '>' + esc(f.label) + '</span>' +
+      '<button type="button" class="cf-rename" data-id="' + esc(f.id) + '" aria-label="Rename field" title="Rename">✎</button>' +
+      '</li>';
+  }
+  function cfEmpty(msg) { return '<li class="cf-empty">' + esc(msg) + '</li>'; }
+
+  function renderCfLists() {
+    var sheet = state.result.sheets[state.cfSheet];
+    var shown = sheet.fields.slice(0, sheet.displayCount);
+    var hidden = sheet.fields.slice(sheet.displayCount);
+    els.cfShown.innerHTML = shown.map(cfItemHtml).join('') || cfEmpty('Drag fields here to show them');
+    els.cfHidden.innerHTML = hidden.map(cfItemHtml).join('') || cfEmpty('Drag fields here to hide them');
+    if (state.cfEditingId) {
+      var inp = els.customizeOverlay.querySelector('.cf-rename-input');
+      if (inp) { inp.focus(); inp.select(); }
+    }
   }
 
-  els.cfList.addEventListener('dragstart', function (e) {
-    var it = e.target.closest('.cf-item'); if (!it) return;
+  // Rename: pencil -> inline input; ✓/Enter/blur commit; Esc cancels.
+  els.customizeOverlay.addEventListener('click', function (e) {
+    var rn = e.target.closest('.cf-rename');
+    if (rn) { if (state.cfEditingId) commitRename(); state.cfEditingId = rn.getAttribute('data-id'); renderCfLists(); return; }
+    if (e.target.closest('.cf-rename-ok')) { commitRename(); }
+  });
+  els.customizeOverlay.addEventListener('keydown', function (e) {
+    if (!state.cfEditingId) return;
+    if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); state.cfEditingId = null; renderCfLists(); }
+  });
+  els.customizeOverlay.addEventListener('blur', function (e) {
+    if (state.cfEditingId && e.target && e.target.classList && e.target.classList.contains('cf-rename-input')) commitRename();
+  }, true);
+
+  function commitRename() {
+    var id = state.cfEditingId; if (!id) return;
+    var inp = els.customizeOverlay.querySelector('.cf-rename-input');
+    var sheet = state.result.sheets[state.cfSheet];
+    var f = sheet.fields.filter(function (x) { return x.id === id; })[0];
+    if (f && inp) { var v = inp.value.trim(); f.label = v || f.defaultLabel; }
+    state.cfEditingId = null;
+    renderCfLists();
+    rerenderActive();
+  }
+
+  // Drag between/within the two lists.
+  [els.cfShown, els.cfHidden].forEach(function (list) {
+    list.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      if (!dragEl) return;
+      var empty = list.querySelector('.cf-empty'); if (empty) empty.remove();
+      var after = cfAfterElement(list, e.clientY);
+      if (after == null) list.appendChild(dragEl);
+      else list.insertBefore(dragEl, after);
+    });
+  });
+  els.customizeOverlay.addEventListener('dragstart', function (e) {
+    var it = e.target.closest('.cf-item'); if (!it || it.classList.contains('editing')) return;
     dragEl = it; it.classList.add('dragging');
     if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (x) {} }
   });
-  els.cfList.addEventListener('dragend', function () {
+  els.customizeOverlay.addEventListener('dragend', function () {
     if (dragEl) { dragEl.classList.remove('dragging'); dragEl = null; }
     applyCfOrder();
   });
-  els.cfList.addEventListener('dragover', function (e) {
-    e.preventDefault();
-    if (!dragEl) return;
-    var after = cfAfterElement(e.clientY);
-    if (after == null) els.cfList.appendChild(dragEl);
-    else els.cfList.insertBefore(dragEl, after);
-  });
 
-  function cfAfterElement(y) {
-    var children = Array.prototype.slice.call(els.cfList.children).filter(function (c) { return c !== dragEl; });
+  function cfAfterElement(list, y) {
+    var children = Array.prototype.slice.call(list.children).filter(function (c) {
+      return c !== dragEl && c.getAttribute('data-id');
+    });
     for (var i = 0; i < children.length; i++) {
       var box = children[i].getBoundingClientRect();
       if (y < box.top + box.height / 2) return children[i];
@@ -388,19 +652,25 @@
     return null;
   }
 
+  function idsIn(list) {
+    return Array.prototype.slice.call(list.children)
+      .map(function (c) { return c.getAttribute('data-id'); })
+      .filter(Boolean);
+  }
+
   function applyCfOrder() {
     var sheet = state.result.sheets[state.cfSheet];
-    var order = [], cutoff = 0, seenDivider = false;
-    Array.prototype.forEach.call(els.cfList.children, function (child) {
-      if (child.classList.contains('cf-divider')) { seenDivider = true; return; }
-      order.push(child.getAttribute('data-id'));
-      if (!seenDivider) cutoff++;
-    });
+    var shownIds = idsIn(els.cfShown), hiddenIds = idsIn(els.cfHidden);
     var byId = {};
     sheet.fields.forEach(function (f) { byId[f.id] = f; });
-    var reordered = order.map(function (id) { return byId[id]; }).filter(Boolean);
-    if (reordered.length === sheet.fields.length) { sheet.fields = reordered; sheet.displayCount = cutoff; }
-    if (state.edit.active) renderEditGroup(); else renderSheet();
+    var order = shownIds.concat(hiddenIds).map(function (id) { return byId[id]; }).filter(Boolean);
+    // Guard: keep every field, and never allow an empty displayed list.
+    if (order.length === sheet.fields.length && shownIds.length >= 1) {
+      sheet.fields = order;
+      sheet.displayCount = shownIds.length;
+    }
+    renderCfLists();
+    rerenderActive();
   }
 
   // ---- Utilities -----------------------------------------------------------

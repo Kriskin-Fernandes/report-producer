@@ -88,6 +88,41 @@ likelyFields.push(owner);           // move to the very end (hidden region)
 likely.displayCount -= 1;           // shrink the cutoff by one
 assert(labels(RP.displayedFields(likely)).indexOf('Owner') === -1, 'Owner removed from displayed after customize');
 
+console.log('\n=== Field defaults / rename / revert ===');
+var fresh0 = RP.buildReport(RP.parseCSV(text));
+var lk = fresh0.sheets[0];
+var nameField = lk.fields.filter(function (f) { return f.id === 'name'; })[0];
+eq(nameField.defaultLabel, 'Account Name', 'Field carries defaultLabel');
+var colField = lk.fields.filter(function (f) { return f.id === 'col4'; })[0]; // Region (from CSV header)
+eq(colField && colField.defaultLabel, 'Region', 'CSV-derived field defaultLabel = header');
+nameField.label = 'Merchant';
+eq(RP.displayedFields(lk).filter(function (f) { return f.id === 'name'; })[0].label, 'Merchant', 'Rename reflected in field label');
+lk.fields.forEach(function (f) { f.label = f.defaultLabel; }); // revert
+eq(nameField.label, 'Account Name', 'Revert restores default label');
+
+console.log('\n=== reorderPrimaryTop (offscreen reorder) ===');
+var epsilon = fresh0.sheets[1].groups[2]; // primary is ACC-040, already on top after build
+// Simulate an in-edit primary change WITHOUT reordering (Task A behavior):
+var g = fresh0.sheets[2].groups[0]; // Unclassified Zeta group, 3 rows, no primary yet
+g.rows.forEach(function (r, i) { r.isPrimary = i === 2; r.classification = i === 2 ? 'Primary' : 'Duplicate'; });
+assert(g.rows[0].isPrimary === false && g.rows[2].isPrimary === true, 'Primary set on row 2, order unchanged (no live reorder)');
+RP.reorderPrimaryTop(g);
+assert(g.rows[0].isPrimary === true, 'reorderPrimaryTop moves primary to the top');
+eq(g.rows.length, 3, 'reorderPrimaryTop keeps all rows');
+
+console.log('\n=== Opportunities field value + export ===');
+var fresh1 = RP.buildReport(RP.parseCSV(text));
+var sh = fresh1.sheets[0];
+// Inject an Opportunities field the way app.js does, then stash a per-row summary.
+var oppsField = RP.makeField('opps', 'Opportunities', 'opportunities', { align: 'center', width: 22 });
+sh.fields.splice(sh.displayCount, 0, oppsField); sh.displayCount += 1;
+var prow = sh.groups[0].rows[0];
+prow.oppsSummary = '3 - 2 weeks ago';
+eq(RP.fieldValue(oppsField, sh.groups[0], prow, 0), '3 - 2 weeks ago', 'Opportunities field value comes from row.oppsSummary');
+eq(RP.fieldValue(oppsField, sh.groups[0], sh.groups[0].rows[1], 1), '', 'Opportunities blank when row has no summary');
+var oppsBytes = XW.buildWorkbook(fresh1.sheets);
+assert(oppsBytes instanceof Uint8Array && oppsBytes.length > 0, 'Workbook builds with Opportunities column');
+
 console.log('\n=== Workbook ===');
 attention.groups[0].action = 'Merge';
 attention.groups[0].actionChosen = true;

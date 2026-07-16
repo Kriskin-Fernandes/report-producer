@@ -41,6 +41,12 @@
           </div>
         </div>
         <p id="fileName" class="file-name" hidden></p>
+        <div class="opps-row">
+          <input id="oppsInput" type="file" accept=".csv,text/csv" hidden />
+          <button id="oppsBtn" class="btn opps-btn" type="button">＋ Add Opportunities CSV (optional)</button>
+          <button id="oppsClear" class="btn opps-clear" type="button" hidden>Remove</button>
+          <p id="oppsName" class="file-name" hidden></p>
+        </div>
         <p id="errorBox" class="error" role="alert" hidden></p>
       </section>
 
@@ -105,19 +111,44 @@
     <p class="edit-hint">Use ← / → to move between groups · Esc to finish</p>
   </div>
 
-  <!-- Customize data (drag to reorder / show / hide fields) -->
+  <!-- Customize data (two lists: displayed / hidden; drag + rename) -->
   <div id="customizeOverlay" class="cf-overlay" role="dialog" aria-label="Customize data" hidden>
     <div class="cf-modal">
       <div class="cf-head">
         <h3 id="cfTitle">Customize data</h3>
-        <button id="cfClose" class="btn primary" type="button">Done ✓</button>
+        <div class="cf-head-actions">
+          <button id="cfRevert" class="btn" type="button">↺ Revert names</button>
+          <button id="cfClose" class="btn primary" type="button">Done ✓</button>
+        </div>
       </div>
       <p class="muted">
-        Drag to reorder. Fields <strong>above the line</strong> are shown in the
-        view and written to the downloaded report (in this order); fields
-        <strong>below the line</strong> are hidden.
+        Drag fields between <strong>Displayed</strong> and <strong>Hidden</strong>,
+        or reorder within a list. Displayed fields appear in the view and the
+        downloaded report, in this order. Click the pencil (✎) to rename a field
+        — the new name shows in the view and the <code>.xlsx</code>.
+        <strong>Revert names</strong> restores the original CSV names.
       </p>
-      <ul id="cfList" class="cf-list"></ul>
+      <div class="cf-cols">
+        <div class="cf-col">
+          <h4 class="cf-col-title">Displayed</h4>
+          <ul id="cfShown" class="cf-list" aria-label="Displayed fields"></ul>
+        </div>
+        <div class="cf-col">
+          <h4 class="cf-col-title">Hidden</h4>
+          <ul id="cfHidden" class="cf-list" aria-label="Hidden fields"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Opportunities popup -->
+  <div id="oppsOverlay" class="cf-overlay" role="dialog" aria-label="Opportunities" hidden>
+    <div class="cf-modal opps-modal">
+      <div class="cf-head">
+        <h3 id="oppsTitle">Opportunities</h3>
+        <button id="oppsClose" class="btn primary" type="button">Close ✓</button>
+      </div>
+      <div class="table-scroll"><table id="oppsTable" class="pv"></table></div>
     </div>
   </div>
 

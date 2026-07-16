@@ -145,10 +145,24 @@
   // Resolve a field's value for a row (rowIndex within its group). Group-level
   // fields (action / notes / remarks) render on the top row only.
   function fieldValue(f, group, row, ri) {
+    if (f.kind === 'opportunities') return (row && row.oppsSummary) || '';
     if (f.group) return ri === 0 ? (group[f.id] || '') : '';
     if (f.kind === 'classification') return row.classification || '';
     var v = row.raw ? row.raw[f.src] : '';
     return v == null ? '' : String(v).trim();
+  }
+
+  // Rows with the Primary first (rest keep order), without mutating the model.
+  // Guarantees the exported data always has the primary on top, even if the
+  // on-screen order was left unchanged during editing.
+  function orderedRows(group) {
+    var rows = (group && group.rows) || [];
+    var primary = null;
+    for (var i = 0; i < rows.length; i++) { if (rows[i].isPrimary) { primary = rows[i]; break; } }
+    if (!primary) return rows.slice();
+    var out = [primary];
+    for (var j = 0; j < rows.length; j++) { if (rows[j] !== primary) out.push(rows[j]); }
+    return out;
   }
 
   // ---- Worksheet XML --------------------------------------------------------
@@ -239,7 +253,7 @@
     var validationRanges = [];
     sheet.groups.forEach(function (group, gi) {
       if (gi > 0) rowNum++; // blank separator row (simply skip a row number)
-      var gRows = group.rows;
+      var gRows = orderedRows(group); // primary always on top in the export
       var startRow = rowNum + 1;
       gRows.forEach(function (rec, ri) {
         rowNum++;

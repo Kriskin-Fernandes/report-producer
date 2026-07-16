@@ -180,21 +180,46 @@ html, body {
 .edit-tags { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 0 0 16px; }
 .edit-tag { background: #FFE1CC; border: 1px solid #f4c79e; color: #7c3d12; border-radius: 999px; padding: 10px 22px; font-size: 1.15rem; font-weight: 700; }
 
-/* Customize-data modal (drag to reorder / show / hide) */
+/* Customize-data modal (two lists: displayed / hidden; drag + rename) */
 .cf-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(15, 23, 42, .5); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.cf-modal { background: #fff; border-radius: 14px; box-shadow: var(--shadow); width: min(460px, 96vw); max-height: 88vh; overflow: auto; padding: 20px 22px; }
+.cf-modal { background: #fff; border-radius: 14px; box-shadow: var(--shadow); width: min(760px, 96vw); max-height: 88vh; overflow: auto; padding: 20px 22px; }
 .cf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cf-head h3 { margin: 0; font-size: 1.1rem; }
-.cf-list { list-style: none; margin: 12px 0 0; padding: 0; }
-.cf-item { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 6px 0; cursor: grab; font-size: .92rem; font-weight: 600; }
+.cf-head-actions { display: flex; align-items: center; gap: 10px; }
+
+.cf-cols { display: flex; gap: 16px; margin-top: 12px; align-items: flex-start; }
+.cf-col { flex: 1 1 50%; min-width: 0; }
+.cf-col-title { margin: 0 0 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 700; }
+.cf-list { list-style: none; margin: 0; padding: 6px; min-height: 120px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; }
+.cf-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; margin: 6px 0; cursor: grab; font-size: .9rem; font-weight: 600; }
 .cf-item:hover { border-color: var(--brand); }
 .cf-item.dragging { opacity: .4; }
-.cf-grip { color: var(--muted); cursor: grab; }
-.cf-divider { list-style: none; text-align: center; color: var(--brand); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border-top: 2px dashed var(--brand); margin: 14px 0; padding-top: 8px; }
+.cf-item.editing { cursor: default; }
+.cf-grip { color: var(--muted); cursor: grab; flex: 0 0 auto; }
+.cf-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-label.renamed { color: var(--brand-dark); }
+.cf-label.renamed::after { content: " ✎"; font-size: .72rem; opacity: .7; }
+.cf-rename, .cf-rename-ok { flex: 0 0 auto; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: .95rem; padding: 2px 6px; border-radius: 6px; }
+.cf-rename:hover, .cf-rename-ok:hover { background: #eff6ff; color: var(--brand); }
+.cf-rename-input { flex: 1 1 auto; min-width: 0; padding: 5px 8px; border: 1px solid var(--brand); border-radius: 8px; font-size: .9rem; font-weight: 600; }
+.cf-empty { list-style: none; color: var(--muted); font-size: .82rem; font-style: italic; text-align: center; padding: 24px 8px; }
+
+/* Opportunities: optional upload + in-table bubble + popup */
+.opps-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.opps-btn { font-size: .85rem; }
+.opps-clear { font-size: .8rem; padding: 6px 10px; }
+.opps-row .file-name { margin: 0; flex-basis: 100%; }
+.pv .opps-cell { text-align: center; }
+.opps-bubble { display: inline-block; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 3px 12px; font-size: .8rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.opps-bubble:hover { background: #e0e7ff; border-color: var(--brand); }
+.opps-bubble.zero { background: #f1f5f9; border-color: var(--line); color: var(--muted); cursor: default; font-weight: 600; }
+.opps-modal { width: min(680px, 96vw); }
+.opps-modal .table-scroll { margin-top: 12px; }
 
 @media (max-width: 780px) {
   .top-row { flex-direction: column; }
   .action-buttons { grid-template-columns: repeat(2, 1fr); }
   .edit-nav { height: auto; }
   .action-btn { min-height: 90px; }
+  .cf-cols { flex-direction: column; }
 }

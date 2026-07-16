@@ -39,10 +39,14 @@ customizable (see below).
 - A **tab selector** switches between full views of each sheet.
 - **Account ID** is a clickable link to the account in Salesforce
   (`https://checkout.my.salesforce.com/<id>`), on screen and in the `.xlsx`.
-- **Customize data** opens a drag-and-drop panel (per sheet): drag fields above
-  the cutoff line to show them, below to hide them, and reorder within the shown
-  region. Fields shown here are exactly what appears in the view **and** in the
-  downloaded report, in this order. Every input column is available except
+- **Add Opportunities CSV** (optional) loads a second export of opportunities
+  and links them to accounts by Account ID (see *Opportunities* below).
+- **Customize data** opens a per-sheet panel with two lists — **Displayed** and
+  **Hidden**. Drag fields between the lists to show/hide them, or reorder within
+  a list; the Displayed list (in order) is exactly what appears in the view
+  **and** the downloaded report. The **pencil (✎)** next to a field renames it
+  (the new name shows in the view and the `.xlsx`); **Revert names** restores
+  the original CSV/built-in names. Every input column is available except
   U, V and Z, which are never shown.
 - **Edit actions** (all sheets) opens a full-screen mode that steps through the
   groups one at a time. The **primary account name** is the large title; the
@@ -54,6 +58,33 @@ customizable (see below).
   reasons appear as large tags. Use **← / →** to move between groups, **Esc** to
   finish. Actions, remarks and primary changes are written into the workbook on
   download.
+  - Changing the primary **does not** re-shuffle the rows while you are looking
+    at the group (watching rows jump around is jarring). The primary is moved to
+    the top **offscreen** — the next time you open that group, and in the
+    exported workbook, which always lists the primary first.
+
+## Opportunities (optional)
+
+If you also have an **Opportunities** export, click **Add Opportunities CSV**.
+Opportunities are matched to accounts by **Account ID**; an account may have
+zero, one, or many, and opportunities that don't match any account in the
+report are ignored. Every table gains an **Opportunities** column showing a
+bubble with the **count** and how long ago the **most recently modified**
+opportunity was (e.g. `3 - 2 weeks ago`). Clicking a non-empty bubble opens a
+popup listing that account's opportunities — **Opportunity ID** (linked to
+Salesforce, like Account ID), **Opportunity owner**, **Last modified date** and
+**Owner role** — most-recently-modified first. In the downloaded `.xlsx` the
+column holds the same summary text.
+
+Opportunities columns (read by position):
+
+| Field | Column | Index (0-based) |
+| --- | --- | --- |
+| Opportunity ID | A | 0 |
+| Opportunity owner | C | 2 |
+| Owner role | D | 3 |
+| Account ID (links to the account) | F | 5 |
+| Last modified date (MM/DD/YYYY) | X | 23 |
 
 ## Formatting applied
 
