@@ -175,9 +175,9 @@
     }
 
     var sheets = [
-      makeSheet('likely', 'Likely duplicates', 'Low complexity, no billing country conflicts, no parent/children',
+      makeSheet('likely', 'Likely duplicates', 'Possible duplicates with no issues, no billing country conflicts, no parent/children relationships',
         THEME.blue, COLS_LIKELY, section1, 'none', true, detailFor(COLS_LIKELY)),
-      makeSheet('attention', 'Needs Attention', 'Flagged, requires approval',
+      makeSheet('attention', 'Problematic duplicates', 'Possible duplicates with problems flagged by the system',
         THEME.peach, COLS_ATTENTION, section2, 'attention', true, detailFor(COLS_ATTENTION)),
       makeSheet('unclassified', 'Unclassified', 'Records that could not be classified',
         THEME.gray, COLS_UNCLASSIFIED, unclassifiedGroups, 'unclassified', false, detailFor(COLS_UNCLASSIFIED))
