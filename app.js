@@ -261,6 +261,11 @@
   function setAction(a) {
     currentGroup().action = a;
     updateActionButtons();
+    
+    // Automatically navigate to the next group after a 200ms delay
+    setTimeout(function () {
+      navGroup(1);
+    }, 200);
   }
 
   function updateActionButtons() {
