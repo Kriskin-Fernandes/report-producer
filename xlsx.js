@@ -55,7 +55,7 @@
   }
 
   StyleManager.prototype.font = function (spec) {
-    // spec: {size, bold, italic, mono}
+    // spec: {size, bold, italic, mono, underline, color}
     var key = JSON.stringify(spec);
     if (this._fontKey[key] != null) return this._fontKey[key];
     var name = spec.mono ? 'Consolas' : 'Calibri';
@@ -63,7 +63,9 @@
     var xml = '<font>' +
       (spec.bold ? '<b/>' : '') +
       (spec.italic ? '<i/>' : '') +
+      (spec.underline ? '<u/>' : '') +
       '<sz val="' + (spec.size || 11) + '"/>' +
+      (spec.color ? '<color rgb="' + spec.color + '"/>' : '') +
       '<name val="' + name + '"/>' +
       '<family val="' + family + '"/>' +
       '</font>';
@@ -173,7 +175,14 @@
     // Data-cell style resolver (dedups automatically via the manager).
     // Primary rows are bold but carry no background fill.
     function dataXf(colDef, isPrimary, top, bottom) {
-      var fontId = sm.font({ size: 11, bold: !!isPrimary, mono: !!colDef.id });
+      var isId = colDef.k === 'id';
+      var fontId = sm.font({ 
+        size: 11, 
+        bold: !!isPrimary, 
+        mono: !!colDef.id,
+        underline: isId,
+        color: isId ? 'FF0563C1' : null
+      });
       var borderId = sm.border({ l: 1, r: 1, t: !!top, b: !!bottom });
       return sm.xf({
         fontId: fontId, fillId: 0, borderId: borderId,
@@ -186,8 +195,20 @@
     function pushRow(r, cells, ht) {
       rowsXml.push('<row r="' + r + '"' + (ht ? ' ht="' + ht + '" customHeight="1"' : '') + '>' + cells + '</row>');
     }
-    function styledCell(ref, s, value) {
+    
+    function styledCell(ref, s, value, colKey) {
       if (value == null || value === '') return '<c r="' + ref + '" s="' + s + '"/>';
+      
+      // If the cell belongs to the ID column, wrap it in a HYPERLINK formula
+      if (colKey === 'id') {
+        var safeVal = xmlEscape(value);
+        var excelSafeStr = String(value).replace(/"/g, '""'); // Escape inner quotes for Excel formulas
+        var formula = 'HYPERLINK("https://checkout.my.salesforce.com/' + excelSafeStr + '", "' + excelSafeStr + '")';
+        
+        // t="str" dictates that the value <v> contains the result of the formula <f>
+        return '<c r="' + ref + '" s="' + s + '" t="str"><f>' + xmlEscape(formula) + '</f><v>' + safeVal + '</v></c>';
+      }
+      
       return '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' +
         xmlEscape(value) + '</t></is></c>';
     }
@@ -232,7 +253,9 @@
           // only; duplicate rows leave them blank.
           var val = GROUP_FIELDS[colDef.k] ? (top ? group[colDef.k] : '') : rec[colDef.k];
           var s = dataXf(colDef, rec.isPrimary, top, bottom);
-          cellsXml += styledCell(colLetter(c + 1) + rowNum, s, val == null ? '' : String(val));
+          
+          // Pass colDef.k as the 4th parameter to trigger link creation for IDs
+          cellsXml += styledCell(colLetter(c + 1) + rowNum, s, val == null ? '' : String(val), colDef.k);
         }
         pushRow(rowNum, cellsXml);
       });
