@@ -23,26 +23,37 @@ its own row (like the input); the **Primary** record in each group is
 identified by its Classification value, reordered to the **top** of its group,
 and emphasized with bold text.
 
-| Sheet | Theme | Membership | Columns |
+| Sheet | Theme | Membership | Default columns |
 | --- | --- | --- | --- |
-| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Account ID, Type, Owner, Reason, Remarks |
-| **Needs Attention** | light peach | Every other classified group. | Action, Classification, Account Name, Account ID, Type, Owner, Reason, **Notes**, Remarks |
-| **Unclassified** | light gray | Groups whose records are all Unclassified (plus any group without a clean Primary). | Action, Classification, Account Name, Account ID, Type, Owner, **Notes** |
+| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Reason, Remarks |
+| **Problematic duplicates** | light peach | Every other classified group. | …+ **Notes** (before Remarks) |
+| **Unclassified** | light gray | Groups whose records are all Unclassified (plus any group without a clean Primary). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Notes, Remarks |
+
+Columns are the *default* — each sheet's shown/exported columns are fully
+customizable (see below).
 
 ## Using the app
 
 - A **padlock** button (top-right) opens the privacy notice.
 - The **Upload** and **Report** (summary + download) cards sit side by side.
 - A **tab selector** switches between full views of each sheet.
-- **Detailed view** (a toggle) adds every remaining input column — all columns
-  except U, V and Z, which are never shown — on-screen only. It does not change
-  the downloaded file.
-- **Edit actions** (on Likely duplicates and Needs Attention) opens a
-  full-screen mode that steps through the groups one at a time: the group's
-  accounts on top, four big buttons (Merge / Ignore / Evaluate / None) below,
-  and a **Remarks** field. Use **← / →** to move between groups, **Esc** to
-  finish. On Needs Attention the group's **Notes** are shown for context.
-  Chosen actions and remarks are written into the workbook on download.
+- **Account ID** is a clickable link to the account in Salesforce
+  (`https://checkout.my.salesforce.com/<id>`), on screen and in the `.xlsx`.
+- **Customize data** opens a drag-and-drop panel (per sheet): drag fields above
+  the cutoff line to show them, below to hide them, and reorder within the shown
+  region. Fields shown here are exactly what appears in the view **and** in the
+  downloaded report, in this order. Every input column is available except
+  U, V and Z, which are never shown.
+- **Edit actions** (all sheets) opens a full-screen mode that steps through the
+  groups one at a time. The **primary account name** is the large title; the
+  group's accounts are listed with a **Primary radio** to change which account
+  is primary; four big buttons (Merge / Ignore / Evaluate / None) assign the
+  group's action; and a **Remarks** field adds a note. Choosing an action
+  auto-advances to the next group (Unclassified only advances once **both** an
+  action and a primary are chosen). On Problematic duplicates the flagged
+  reasons appear as large tags. Use **← / →** to move between groups, **Esc** to
+  finish. Actions, remarks and primary changes are written into the workbook on
+  download.
 
 ## Formatting applied
 
@@ -52,7 +63,7 @@ and emphasized with bold text.
 - **Fill** on the header / description / column-heading rows: `HSV(hue, 20% saturation, 100% value)` — hue per sheet (blue / peach; gray uses a neutral light gray).
 - **Primary rows**: **always the top row of their group**, shown in **bold** with no background fill.
 - **Borders**: full grid on the header block, a box around each group, and vertical rules between every column (blank row between groups).
-- **Account ID** cells use a monospaced font (Consolas).
+- **Account ID** cells are a Salesforce `HYPERLINK` (blue, underlined, monospaced).
 - **Notes / Remarks** columns never wrap — each is widened to fit its longest value.
 - **Action** is one value **per group**, written on the group's top (primary) row with a real Excel dropdown (`None`, `Merge`, `Evaluate`, `Ignore`); duplicate rows are left blank.
 - **Remarks** (from edit mode) are written on the group's top row, in the added Remarks column.
@@ -60,7 +71,7 @@ and emphasized with bold text.
 
 ### Notes column
 
-- **Needs Attention:** `has relationship` (any record has a value in column AA), `has country conflict` (any record has a value in column AB), plus any text **after the `-`** in the group's Complexity (column Z) — e.g. `Medium - VAT number mismatch` contributes `VAT number mismatch`. Joined with `, `.
+- **Problematic duplicates:** `has relationship` (any record has a value in column AA), `has country conflict` (any record has a value in column AB), plus any text **after the `-`** in the group's Complexity (column Z) — e.g. `Medium - VAT number mismatch` contributes `VAT number mismatch`. Joined with `, `.
 - **Unclassified:** relationship / country-conflict flags only.
 - The note sits on the group's representative row (the Primary, or the first row when there is no Primary).
 
@@ -77,6 +88,7 @@ wrong report columns — check your export matches.
 
 | Field | Column | Index (0-based) |
 | --- | --- | --- |
+| Alias account | B | 1 |
 | Account Name | C | 2 |
 | Account ID | D | 3 |
 | Type | G | 6 |

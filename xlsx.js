@@ -140,24 +140,20 @@
       '</styleSheet>';
   };
 
-  // Per-column alignment (horizontal). Everything is vertically centered.
-  var HALIGN = {
-    action: 'center', classification: 'center', name: 'left', id: 'left',
-    type: 'center', owner: 'left', reason: 'left', notes: 'left', remarks: 'left'
-  };
-  var WRAP_COLS = { reason: true };            // reason wraps; notes/remarks do not
-  var FIT_COLS = { notes: 1, remarks: 1 };     // widen to fit their content, no wrap
-  // Base column widths (Excel width units).
-  var WIDTHS = {
-    action: 12, classification: 14, name: 30, id: 18, type: 16, owner: 20,
-    reason: 42, notes: 42, remarks: 40
-  };
-  // Group-level fields render only on the group's top row.
-  var GROUP_FIELDS = { action: 1, notes: 1, remarks: 1 };
+  var SALESFORCE_BASE = 'https://checkout.my.salesforce.com/';
+
+  // Resolve a field's value for a row (rowIndex within its group). Group-level
+  // fields (action / notes / remarks) render on the top row only.
+  function fieldValue(f, group, row, ri) {
+    if (f.group) return ri === 0 ? (group[f.id] || '') : '';
+    if (f.kind === 'classification') return row.classification || '';
+    var v = row.raw ? row.raw[f.src] : '';
+    return v == null ? '' : String(v).trim();
+  }
 
   // ---- Worksheet XML --------------------------------------------------------
   function sheetXml(sheet, sm) {
-    var cols = sheet.columns;
+    var cols = sheet.fields.slice(0, sheet.displayCount); // displayed fields only
     var nCols = cols.length;
     var lastCol = colLetter(nCols);
     var theme = sheet.theme;
@@ -173,20 +169,20 @@
     var xfHeadCell = sm.xf({ fontId: sm.font({ size: 11, bold: true }), fillId: headerFillId, borderId: allBorder, halign: 'center', valign: 'center' });
 
     // Data-cell style resolver (dedups automatically via the manager).
-    // Primary rows are bold but carry no background fill.
-    function dataXf(colDef, isPrimary, top, bottom) {
-      var isId = colDef.k === 'id';
-      var fontId = sm.font({ 
-        size: 11, 
-        bold: !!isPrimary, 
-        mono: !!colDef.id,
-        underline: isId,
-        color: isId ? 'FF0563C1' : null
+    // Primary rows are bold but carry no background fill. Linked (ID) cells are
+    // blue + underlined.
+    function dataXf(field, isPrimary, top, bottom) {
+      var fontId = sm.font({
+        size: 11,
+        bold: !!isPrimary,
+        mono: !!field.mono,
+        underline: !!field.link,
+        color: field.link ? 'FF0563C1' : null
       });
       var borderId = sm.border({ l: 1, r: 1, t: !!top, b: !!bottom });
       return sm.xf({
         fontId: fontId, fillId: 0, borderId: borderId,
-        halign: HALIGN[colDef.k] || 'left', valign: 'center', wrap: !!WRAP_COLS[colDef.k]
+        halign: field.align || 'left', valign: 'center', wrap: !!field.wrap
       });
     }
 
@@ -196,19 +192,18 @@
       rowsXml.push('<row r="' + r + '"' + (ht ? ' ht="' + ht + '" customHeight="1"' : '') + '>' + cells + '</row>');
     }
     
-    function styledCell(ref, s, value, colKey) {
+    function styledCell(ref, s, value, isLink) {
       if (value == null || value === '') return '<c r="' + ref + '" s="' + s + '"/>';
-      
-      // If the cell belongs to the ID column, wrap it in a HYPERLINK formula
-      if (colKey === 'id') {
+
+      // Linked (Account ID) cells become a Salesforce HYPERLINK formula.
+      if (isLink) {
         var safeVal = xmlEscape(value);
-        var excelSafeStr = String(value).replace(/"/g, '""'); // Escape inner quotes for Excel formulas
-        var formula = 'HYPERLINK("https://checkout.my.salesforce.com/' + excelSafeStr + '", "' + excelSafeStr + '")';
-        
-        // t="str" dictates that the value <v> contains the result of the formula <f>
+        var excelSafeStr = String(value).replace(/"/g, '""'); // escape inner quotes for the formula
+        var formula = 'HYPERLINK("' + SALESFORCE_BASE + excelSafeStr + '", "' + excelSafeStr + '")';
+        // t="str" => <v> holds the formula's cached result.
         return '<c r="' + ref + '" s="' + s + '" t="str"><f>' + xmlEscape(formula) + '</f><v>' + safeVal + '</v></c>';
       }
-      
+
       return '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' +
         xmlEscape(value) + '</t></is></c>';
     }
@@ -231,11 +226,15 @@
     // Row 3: column headings.
     var headCells = '';
     for (var ch = 0; ch < nCols; ch++) {
-      headCells += styledCell(colLetter(ch + 1) + '3', xfHeadCell, cols[ch].h);
+      headCells += styledCell(colLetter(ch + 1) + '3', xfHeadCell, cols[ch].label);
     }
     pushRow(3, headCells, 18);
 
-    // Data groups (blank row between groups) + collect dropdown ranges.
+    // Which displayed column is the Action column (dropdown target)?
+    var actionIdx = -1;
+    for (var ai = 0; ai < nCols; ai++) { if (cols[ai].id === 'action') { actionIdx = ai; break; } }
+
+    // Data groups (blank row between groups) + collect dropdown cells.
     rowNum = 3;
     var validationRanges = [];
     sheet.groups.forEach(function (group, gi) {
@@ -248,37 +247,33 @@
         var bottom = ri === gRows.length - 1;
         var cellsXml = '';
         for (var c = 0; c < nCols; c++) {
-          var colDef = cols[c];
-          // Group-level fields (Action / Notes / Remarks) render on the top row
-          // only; duplicate rows leave them blank.
-          var val = GROUP_FIELDS[colDef.k] ? (top ? group[colDef.k] : '') : rec[colDef.k];
-          var s = dataXf(colDef, rec.isPrimary, top, bottom);
-          
-          // Pass colDef.k as the 4th parameter to trigger link creation for IDs
-          cellsXml += styledCell(colLetter(c + 1) + rowNum, s, val == null ? '' : String(val), colDef.k);
+          var field = cols[c];
+          var val = fieldValue(field, group, rec, ri);
+          var s = dataXf(field, rec.isPrimary, top, bottom);
+          cellsXml += styledCell(colLetter(c + 1) + rowNum, s, val, field.link);
         }
         pushRow(rowNum, cellsXml);
       });
       // Action dropdown lives on the group's top row only.
-      validationRanges.push('A' + startRow);
+      if (actionIdx >= 0) validationRanges.push(colLetter(actionIdx + 1) + startRow);
     });
 
     var lastRow = rowNum < 3 ? 3 : rowNum;
 
-    // <cols> widths. Fit-columns (Notes / Remarks) do not wrap, so widen them
-    // to fit their longest (group-level) value and keep every value on one line.
-    function fitWidth(key, label) {
-      var maxLen = label.length;
+    // <cols> widths. Fit-fields (Notes / Remarks) do not wrap, so widen them to
+    // fit their longest (group-level) value and keep every value on one line.
+    function fitWidth(field) {
+      var maxLen = field.label.length;
       sheet.groups.forEach(function (g) {
-        var s = g[key] == null ? '' : String(g[key]);
+        var s = g[field.id] == null ? '' : String(g[field.id]);
         if (s.length > maxLen) maxLen = s.length;
       });
-      return Math.min(120, Math.max(WIDTHS[key] || 16, maxLen + 3));
+      return Math.min(120, Math.max(field.width || 16, maxLen + 3));
     }
     var colsXml = '<cols>';
     for (var cw = 0; cw < nCols; cw++) {
-      var cd = cols[cw];
-      var w = FIT_COLS[cd.k] ? fitWidth(cd.k, cd.h) : (WIDTHS[cd.k] || 16);
+      var f = cols[cw];
+      var w = f.fit ? fitWidth(f) : (f.width || 16);
       colsXml += '<col min="' + (cw + 1) + '" max="' + (cw + 1) + '" width="' + w + '" customWidth="1"/>';
     }
     colsXml += '</cols>';

@@ -61,7 +61,7 @@
       <div class="viewer-head">
         <div class="tabs" id="sheetTabs" role="tablist" aria-label="Sheets"></div>
         <div class="viewer-actions">
-          <label class="toggle"><input type="checkbox" id="detailToggle" /> Detailed view</label>
+          <button id="customizeBtn" class="btn" type="button">⚙ Customize data</button>
           <button id="editBtn" class="btn" type="button">✎ Edit actions</button>
         </div>
       </div>
@@ -81,13 +81,14 @@
         <span id="editProgress" class="edit-progress"></span>
       </div>
       <div class="edit-top-actions">
-        <label class="toggle"><input type="checkbox" id="editDetailToggle" /> Detailed view</label>
+        <button id="editCustomizeBtn" class="btn" type="button">⚙ Customize data</button>
         <button id="editClose" class="btn" type="button">Done ✓</button>
       </div>
     </div>
 
     <div class="edit-body">
-      <div id="editNote" class="edit-note" hidden></div>
+      <h2 id="editPrimaryName" class="edit-primary-name"></h2>
+      <div id="editTags" class="edit-tags" hidden></div>
       <div class="edit-group-meta" id="editGroupMeta"></div>
       <div class="table-scroll edit-records"><table id="editTable" class="pv"></table></div>
       <div class="edit-remarks">
@@ -102,6 +103,22 @@
       <button id="nextGroup" class="nav-btn" type="button" aria-label="Next group">›</button>
     </div>
     <p class="edit-hint">Use ← / → to move between groups · Esc to finish</p>
+  </div>
+
+  <!-- Customize data (drag to reorder / show / hide fields) -->
+  <div id="customizeOverlay" class="cf-overlay" role="dialog" aria-label="Customize data" hidden>
+    <div class="cf-modal">
+      <div class="cf-head">
+        <h3 id="cfTitle">Customize data</h3>
+        <button id="cfClose" class="btn primary" type="button">Done ✓</button>
+      </div>
+      <p class="muted">
+        Drag to reorder. Fields <strong>above the line</strong> are shown in the
+        view and written to the downloaded report (in this order); fields
+        <strong>below the line</strong> are hidden.
+      </p>
+      <ul id="cfList" class="cf-list"></ul>
+    </div>
   </div>
 
   <script src="report.js"></script>

@@ -5,6 +5,11 @@
  * under Node.js (for tests). All work is in memory; it never touches the
  * network. It produces a structured "workbook model" (three sheets) that
  * xlsx.js turns into a formatted .xlsx file, and that app.js renders and edits.
+ *
+ * Fields: each sheet owns an ordered `fields` universe (synthetic + every
+ * input data column except U/V/Z) and a `displayCount` cutoff. Fields above the
+ * cutoff are shown on screen and exported (in order); the rest are hidden. The
+ * customize-data panel reorders this list and moves the cutoff.
  */
 (function (global) {
   'use strict';
@@ -12,6 +17,7 @@
   // ---- Column mapping (0-based indexes matching spreadsheet letters) --------
   // A=0 B=1 C=2 D=3 ... G=6 ... T=19 U=20 V=21 W=22 X=23 Y=24 Z=25 AA=26 AB=27
   var COL = {
+    alias: 1,            // B
     accountName: 2,      // C
     accountId: 3,        // D
     type: 6,             // G
@@ -34,23 +40,44 @@
   };
 
   var ACTION_OPTIONS = ['None', 'Merge', 'Evaluate', 'Ignore'];
+  var SALESFORCE_BASE = 'https://checkout.my.salesforce.com/';
 
-  // Column defs. `src` = source input-column index (used to know what is
-  // "already displayed" for detailed view). Synthetic columns have no src.
-  function col(h, k, src, isId) { return { h: h, k: k, src: src, id: !!isId }; }
-  var C_ACTION = col('Action', 'action');
-  var C_CLASS = col('Classification', 'classification', COL.classification);
-  var C_NAME = col('Account Name', 'name', COL.accountName);
-  var C_ID = col('Account ID', 'id', COL.accountId, true);
-  var C_TYPE = col('Type', 'type', COL.type);
-  var C_OWNER = col('Owner', 'owner', COL.owner);
-  var C_REASON = col('Reason', 'reason', COL.reason);
-  var C_NOTES = col('Notes', 'notes');
-  var C_REMARKS = col('Remarks', 'remarks');
+  // ---- Field descriptors ----------------------------------------------------
+  // kind: 'action' | 'notes' | 'remarks' (group-level) | 'classification' | 'id'
+  //       | 'data'. Style hints (mono/link/wrap/fit/align/width) drive both the
+  // on-screen table and the .xlsx.
+  function makeField(id, label, kind, o) {
+    o = o || {};
+    return {
+      id: id, label: label, kind: kind,
+      src: o.src == null ? null : o.src,
+      group: !!o.group, mono: !!o.mono, link: !!o.link,
+      wrap: !!o.wrap, fit: !!o.fit,
+      align: o.align || 'left', width: o.width || 18
+    };
+  }
+  function cloneField(f) {
+    return { id: f.id, label: f.label, kind: f.kind, src: f.src, group: f.group,
+      mono: f.mono, link: f.link, wrap: f.wrap, fit: f.fit, align: f.align, width: f.width };
+  }
 
-  var COLS_LIKELY = [C_ACTION, C_CLASS, C_NAME, C_ID, C_TYPE, C_OWNER, C_REASON, C_REMARKS];
-  var COLS_ATTENTION = [C_ACTION, C_CLASS, C_NAME, C_ID, C_TYPE, C_OWNER, C_REASON, C_NOTES, C_REMARKS];
-  var COLS_UNCLASSIFIED = [C_ACTION, C_CLASS, C_NAME, C_ID, C_TYPE, C_OWNER, C_NOTES];
+  function defAction() { return makeField('action', 'Action', 'action', { group: 1, align: 'center', width: 12 }); }
+  function defClass() { return makeField('classification', 'Classification', 'classification', { src: COL.classification, align: 'center', width: 14 }); }
+  function defName() { return makeField('name', 'Account Name', 'data', { src: COL.accountName, width: 30 }); }
+  function defAlias() { return makeField('alias', 'Alias account', 'data', { src: COL.alias, width: 24 }); }
+  function defId() { return makeField('id', 'Account ID', 'id', { src: COL.accountId, mono: 1, link: 1, width: 20 }); }
+  function defType() { return makeField('type', 'Type', 'data', { src: COL.type, align: 'center', width: 16 }); }
+  function defOwner() { return makeField('owner', 'Owner', 'data', { src: COL.owner, width: 20 }); }
+  function defReason() { return makeField('reason', 'Reason', 'data', { src: COL.reason, wrap: 1, width: 42 }); }
+  function defNotes() { return makeField('notes', 'Notes', 'notes', { group: 1, fit: 1, width: 42 }); }
+  function defRemarks() { return makeField('remarks', 'Remarks', 'remarks', { group: 1, fit: 1, width: 40 }); }
+
+  // Default displayed fields per sheet (Alias sits right of Account Name).
+  var DISPLAYED = {
+    likely: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defReason(), defRemarks()]; },
+    attention: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defReason(), defNotes(), defRemarks()]; },
+    unclassified: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defNotes(), defRemarks()]; }
+  };
 
   // ---- Helpers --------------------------------------------------------------
   function cell(row, i) { var v = row && row[i]; return v == null ? '' : String(v); }
@@ -62,6 +89,16 @@
     while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; }
     return s;
   }
+
+  // Resolve a field's display value for a given row (rowIndex within its group).
+  function fieldValue(f, group, row, ri) {
+    if (f.group) return ri === 0 ? (group[f.id] || '') : '';
+    if (f.kind === 'classification') return row.classification || '';
+    return norm(row.raw ? row.raw[f.src] : '');
+  }
+
+  // Fields shown on screen and exported (above the cutoff).
+  function displayedFields(sheet) { return sheet.fields.slice(0, sheet.displayCount); }
 
   // ---- CSV parser -----------------------------------------------------------
   function parseCSV(text) {
@@ -158,29 +195,36 @@
       else section2.push(gr);
     });
 
-    // Detail columns for a given sheet's column set: every input column that is
-    // not never-shown, not already displayed, and not entirely empty.
-    function detailFor(columns) {
-      var excluded = Object.create(NEVER_SHOW);
-      columns.forEach(function (c) { if (c.src != null) excluded[c.src] = 1; });
+    // Hidden data fields = every input column that is not never-shown, not
+    // already displayed, and not entirely empty (in first-seen order).
+    function hiddenFieldsFor(displayed) {
+      var used = Object.create(NEVER_SHOW);
+      displayed.forEach(function (f) { if (f.src != null) used[f.src] = 1; });
       var out = [];
       for (var idx = 0; idx < maxCols; idx++) {
-        if (excluded[idx]) continue;
+        if (used[idx]) continue;
         var h = norm(cell(header, idx));
         var hasData = h !== '' || dataRows.some(function (rr) { return !isBlank(cell(rr, idx)); });
         if (!hasData) continue;
-        out.push({ index: idx, h: h !== '' ? h : letterFor(idx) });
+        var label = h !== '' ? h : letterFor(idx);
+        out.push(makeField('col' + idx, label, 'data', { src: idx, width: Math.min(40, Math.max(14, label.length + 2)) }));
       }
       return out;
     }
 
+    function fieldsFor(key) {
+      var displayed = DISPLAYED[key]();
+      var hidden = hiddenFieldsFor(displayed);
+      return { fields: displayed.concat(hidden), displayCount: displayed.length };
+    }
+
     var sheets = [
       makeSheet('likely', 'Likely duplicates', 'Possible duplicates with no issues, no billing country conflicts, no parent/children relationships',
-        THEME.blue, COLS_LIKELY, section1, 'none', true, detailFor(COLS_LIKELY)),
+        THEME.blue, fieldsFor('likely'), section1, 'none', true),
       makeSheet('attention', 'Problematic duplicates', 'Possible duplicates with problems flagged by the system',
-        THEME.peach, COLS_ATTENTION, section2, 'attention', true, detailFor(COLS_ATTENTION)),
+        THEME.peach, fieldsFor('attention'), section2, 'attention', true),
       makeSheet('unclassified', 'Unclassified', 'Records that could not be classified',
-        THEME.gray, COLS_UNCLASSIFIED, unclassifiedGroups, 'unclassified', false, detailFor(COLS_UNCLASSIFIED))
+        THEME.gray, fieldsFor('unclassified'), unclassifiedGroups, 'unclassified', true)
     ];
 
     var stats = {
@@ -200,7 +244,7 @@
   function countRecords(groups) { return groups.reduce(function (n, g) { return n + g.records.length; }, 0); }
 
   // notesMode: 'none' | 'attention' | 'unclassified'.
-  function makeSheet(key, title, description, theme, columns, groups, notesMode, editable, detailColumns) {
+  function makeSheet(key, title, description, theme, fieldConf, groups, notesMode, editable) {
     var groupModels = groups.map(function (g) {
       var note = '';
       if (notesMode === 'attention') note = buildNotes(g, true);
@@ -214,25 +258,20 @@
       var rows = ordered.map(function (rec) {
         return {
           classification: norm(cell(rec, COL.classification)),
-          name: cell(rec, COL.accountName),
-          id: cell(rec, COL.accountId),
-          type: cell(rec, COL.type),
-          owner: cell(rec, COL.owner),
-          reason: cell(rec, COL.reason),
           isPrimary: eqi(cell(rec, COL.classification), 'primary'),
           raw: rec
         };
       });
 
       // Action / Remarks / Notes are per-group; they render on the top row.
-      // `notes` matches the column key so the writer/UI can read it uniformly.
-      return { key: g.key, action: 'None', remarks: '', notes: note, rows: rows };
+      // actionChosen tracks whether the user actively picked an action.
+      return { key: g.key, action: 'None', actionChosen: false, remarks: '', notes: note, rows: rows };
     });
 
     return {
       key: key, title: title, description: description, theme: theme,
-      columns: columns, detailColumns: detailColumns, actionOptions: ACTION_OPTIONS,
-      editable: !!editable, groups: groupModels
+      fields: fieldConf.fields, displayCount: fieldConf.displayCount,
+      actionOptions: ACTION_OPTIONS, editable: !!editable, groups: groupModels
     };
   }
 
@@ -246,7 +285,9 @@
 
   var api = {
     COL: COL, THEME: THEME, ACTION_OPTIONS: ACTION_OPTIONS, NEVER_SHOW: NEVER_SHOW,
-    parseCSV: parseCSV, toCSV: toCSV, buildReport: buildReport, letterFor: letterFor
+    SALESFORCE_BASE: SALESFORCE_BASE,
+    parseCSV: parseCSV, toCSV: toCSV, buildReport: buildReport, letterFor: letterFor,
+    fieldValue: fieldValue, displayedFields: displayedFields, cloneField: cloneField
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.ReportProducer = api;
