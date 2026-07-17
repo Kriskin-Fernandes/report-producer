@@ -303,7 +303,7 @@
     if (!list || !list.length) return '0';
     var latest = null;
     list.forEach(function (o) { if (o.modified && (!latest || o.modified > latest)) latest = o.modified; });
-    return list.length + ', ' + (latest ? timeAgo(latest, now) : 'date unknown');
+    return  list.length + ' (' + (latest ? timeAgo(latest, now) : 'date unknown') + ')';
   }
 
   function parseMDY(s) {
