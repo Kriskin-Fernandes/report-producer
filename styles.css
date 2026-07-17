@@ -182,15 +182,17 @@ html, body {
 
 /* Customize-data modal (two lists: displayed / hidden; drag + rename) */
 .cf-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(15, 23, 42, .5); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.cf-modal { background: #fff; border-radius: 14px; box-shadow: var(--shadow); width: min(760px, 96vw); max-height: 88vh; overflow: auto; padding: 20px 22px; }
+.cf-modal { background: #fff; border-radius: 14px; box-shadow: var(--shadow); width: min(760px, 96vw); max-height: 88vh; overflow: hidden; padding: 20px 22px; display: flex; flex-direction: column; }
+.cf-modal > .cf-head, .cf-modal > .muted { flex: 0 0 auto; } /* header + description stay fixed */
 .cf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cf-head h3 { margin: 0; font-size: 1.1rem; }
 .cf-head-actions { display: flex; align-items: center; gap: 10px; }
 
-.cf-cols { display: flex; gap: 16px; margin-top: 12px; align-items: flex-start; }
-.cf-col { flex: 1 1 50%; min-width: 0; }
-.cf-col-title { margin: 0 0 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 700; }
-.cf-list { list-style: none; margin: 0; padding: 6px; min-height: 120px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; }
+/* Only the field lists scroll; the header/description above them stay put. */
+.cf-cols { display: flex; gap: 16px; margin-top: 12px; align-items: stretch; flex: 1 1 auto; min-height: 0; }
+.cf-col { flex: 1 1 50%; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.cf-col-title { margin: 0 0 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 700; flex: 0 0 auto; }
+.cf-list { list-style: none; margin: 0; padding: 6px; min-height: 120px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; flex: 1 1 auto; overflow-y: auto; }
 .cf-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; margin: 6px 0; cursor: grab; font-size: .9rem; font-weight: 600; }
 .cf-item:hover { border-color: var(--brand); }
 .cf-item.dragging { opacity: .4; }
@@ -214,7 +216,12 @@ html, body {
 .opps-bubble:hover { background: #e0e7ff; border-color: var(--brand); }
 .opps-bubble.zero { background: #f1f5f9; border-color: var(--line); color: var(--muted); cursor: default; font-weight: 600; }
 .opps-modal { width: min(680px, 96vw); }
-.opps-modal .table-scroll { margin-top: 12px; }
+.opps-modal .table-scroll { margin-top: 12px; flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* Per-record edit (eye) column in the sheet view */
+.pv .pv-eye, .pv .pv-eye-head { text-align: center; width: 1%; white-space: nowrap; }
+.row-edit { border: none; background: transparent; cursor: pointer; font-size: 1rem; line-height: 1; padding: 3px 7px; border-radius: 7px; opacity: .55; }
+.row-edit:hover { opacity: 1; background: #eff6ff; }
 
 @media (max-width: 780px) {
   .top-row { flex-direction: column; }

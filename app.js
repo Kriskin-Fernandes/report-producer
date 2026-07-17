@@ -111,6 +111,12 @@
   els.customizeBtn.addEventListener('click', function () { openCustomize(); });
   els.editCustomizeBtn.addEventListener('click', function () { openCustomize(); });
 
+  // Per-record eye button jumps straight into edit-actions for that group.
+  els.sheetTable.addEventListener('click', function (e) {
+    var b = e.target.closest('.row-edit'); if (!b) return;
+    openEdit(state.activeSheet, parseInt(b.getAttribute('data-group'), 10));
+  });
+
   // ---- Opportunities popup -------------------------------------------------
   document.addEventListener('click', function (e) {
     var b = e.target.closest('.opps-bubble');
@@ -126,15 +132,15 @@
   function openOppsPopup(acct) {
     var list = (state.opps && state.opps.byAccount[acct]) || [];
     els.oppsTitle.textContent = 'Opportunities for ' + acct + ' (' + list.length + ')';
-    var head = '<tr class="head"><td>Opportunity ID</td><td>Opportunity owner</td><td>Last modified date</td><td>Owner role</td></tr>';
+    var head = '<tr class="head"><td>Opportunity ID</td><td>Opportunity owner</td><td>Stage</td><td>Last modified date</td><td>Owner role</td></tr>';
     var body = list.map(function (o) {
       var link = o.id
         ? '<a href="' + esc(SF + encodeURIComponent(o.id)) + '" target="_blank" rel="noopener noreferrer">' + esc(o.id) + '</a>'
         : '';
       return '<tr><td class="mono">' + link + '</td><td>' + esc(o.owner) + '</td><td>' +
-        esc(o.modifiedRaw) + '</td><td>' + esc(o.role) + '</td></tr>';
+        esc(o.stage) + '</td><td>' + esc(o.modifiedRaw) + '</td><td>' + esc(o.role) + '</td></tr>';
     }).join('');
-    els.oppsTable.innerHTML = head + (body || '<tr class="empty"><td colspan="4">No opportunities.</td></tr>');
+    els.oppsTable.innerHTML = head + (body || '<tr class="empty"><td colspan="5">No opportunities.</td></tr>');
     els.oppsOverlay.hidden = false;
   }
 
@@ -195,7 +201,7 @@
   }
 
   // ---- Opportunities: parse, index, attach --------------------------------
-  var OPP = { id: 0, owner: 2, role: 3, account: 5, modified: 23 }; // cols A,C,D,F,X
+  var OPP = { id: 0, owner: 2, role: 3, account: 5, stage: 13, modified: 23 }; // cols A,C,D,F,N,X
 
   function handleOppsFile(file) {
     var reader = new FileReader();
@@ -245,6 +251,7 @@
         id: String(r[OPP.id] == null ? '' : r[OPP.id]).trim(),
         owner: String(r[OPP.owner] == null ? '' : r[OPP.owner]).trim(),
         role: String(r[OPP.role] == null ? '' : r[OPP.role]).trim(),
+        stage: String(r[OPP.stage] == null ? '' : r[OPP.stage]).trim(),
         account: acct,
         modifiedRaw: modifiedRaw,
         modified: parseMDY(modifiedRaw)
@@ -403,18 +410,27 @@
   function renderSheet() {
     var sheet = state.result.sheets[state.activeSheet];
     var cols = RP.displayedFields(sheet);
-    var n = Math.max(cols.length, 1);
+    // A leading control column (eye button) is shown on-screen for editable
+    // sheets only — it is never part of the field model, view export, or edit
+    // table.
+    var withEye = sheet.editable && sheet.groups.length > 0;
+    var span = Math.max(cols.length, 1) + (withEye ? 1 : 0);
     var html = '';
-    html += '<tr class="title"><td colspan="' + n + '">' + esc(sheet.title) + '</td></tr>';
-    html += '<tr class="desc"><td colspan="' + n + '">' + esc(sheet.description) + '</td></tr>';
-    html += '<tr class="head">' + cols.map(function (c) { return '<td>' + esc(c.label) + '</td>'; }).join('') + '</tr>';
+    html += '<tr class="title"><td colspan="' + span + '">' + esc(sheet.title) + '</td></tr>';
+    html += '<tr class="desc"><td colspan="' + span + '">' + esc(sheet.description) + '</td></tr>';
+    html += '<tr class="head">' + (withEye ? '<td class="pv-eye-head"></td>' : '') +
+      cols.map(function (c) { return '<td>' + esc(c.label) + '</td>'; }).join('') + '</tr>';
     if (!sheet.groups.length) {
-      html += '<tr class="empty"><td colspan="' + n + '">No records in this section.</td></tr>';
+      html += '<tr class="empty"><td colspan="' + span + '">No records in this section.</td></tr>';
     } else {
       sheet.groups.forEach(function (g, gi) {
-        if (gi > 0) html += '<tr class="blank"><td colspan="' + n + '"></td></tr>';
+        if (gi > 0) html += '<tr class="blank"><td colspan="' + span + '"></td></tr>';
         g.rows.forEach(function (row, ri) {
-          html += '<tr' + (row.isPrimary ? ' class="primary"' : '') + '>' +
+          var eye = withEye
+            ? '<td class="pv-eye"><button type="button" class="row-edit" data-group="' + gi +
+              '" aria-label="Open this group in edit actions" title="Edit this group">&#128065;</button></td>'
+            : '';
+          html += '<tr' + (row.isPrimary ? ' class="primary"' : '') + '>' + eye +
             cols.map(function (c) { return td(c, g, row, ri); }).join('') + '</tr>';
         });
       });
@@ -427,10 +443,13 @@
   function currentSheet() { return state.result.sheets[state.edit.sheet]; }
   function currentGroup() { return currentSheet().groups[state.edit.group]; }
 
-  function openEdit(sheetIndex) {
+  function openEdit(sheetIndex, groupIndex) {
     var sheet = state.result.sheets[sheetIndex];
     if (!sheet.editable || !sheet.groups.length) return;
-    state.edit = { active: true, sheet: sheetIndex, group: 0 };
+    var gi = groupIndex || 0;
+    if (gi < 0) gi = 0;
+    if (gi >= sheet.groups.length) gi = sheet.groups.length - 1;
+    state.edit = { active: true, sheet: sheetIndex, group: gi };
     els.editOverlay.hidden = false;
     renderEditGroup();
   }

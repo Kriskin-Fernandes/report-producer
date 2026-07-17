@@ -71,7 +71,7 @@ console.log('Sample written: ' + rows.length + ' rows (incl header)');
 // --- Opportunities sample (optional upload) --------------------------------
 // Columns: A=Opportunity ID, C=Opportunity owner, D=Owner role, F=Account ID,
 // X=Last modified date (MM/DD/YYYY). Links to accounts above by Account ID.
-var OPP = { id: 0, owner: 2, role: 3, account: 5, modified: 23 };
+var OPP = { id: 0, owner: 2, role: 3, account: 5, stage: 13, modified: 23 };
 function mkOpp(o) {
   var r = [];
   for (var i = 0; i < 24; i++) r.push('');
@@ -84,20 +84,21 @@ oppHeader[OPP.id] = 'Opportunity ID';
 oppHeader[OPP.owner] = 'Opportunity owner';
 oppHeader[OPP.role] = 'Owner role';
 oppHeader[OPP.account] = 'Account ID';
+oppHeader[OPP.stage] = 'Stage';
 oppHeader[OPP.modified] = 'Last Modified Date';
 
 var opps = [oppHeader];
 // ACC-001 (Acme, in Likely) -> 3 opportunities, varied dates.
-opps.push(mkOpp({ id: '006Vk00000VshhF', owner: 'Alice Smith', role: 'Account Executive', account: 'ACC-001', modified: '07/02/2026' }));
-opps.push(mkOpp({ id: '006Vk00000Vshh1', owner: 'Bruno Diaz', role: 'SDR', account: 'ACC-001', modified: '06/18/2026' }));
-opps.push(mkOpp({ id: '006Vk00000Vshh2', owner: 'Alice Smith', role: 'Account Executive', account: 'ACC-001', modified: '01/10/2026' }));
+opps.push(mkOpp({ id: '006Vk00000VshhF', owner: 'Alice Smith', role: 'Account Executive', account: 'ACC-001', stage: 'Closed Won', modified: '07/02/2026' }));
+opps.push(mkOpp({ id: '006Vk00000Vshh1', owner: 'Bruno Diaz', role: 'SDR', account: 'ACC-001', stage: 'Negotiation', modified: '06/18/2026' }));
+opps.push(mkOpp({ id: '006Vk00000Vshh2', owner: 'Alice Smith', role: 'Account Executive', account: 'ACC-001', stage: 'Prospecting', modified: '01/10/2026' }));
 // ACC-040 (Epsilon, Problematic) -> 1 opportunity.
-opps.push(mkOpp({ id: '006Vk00000Vshh9', owner: 'Erin Fox', role: 'Account Manager', account: 'ACC-040', modified: '05/30/2026' }));
+opps.push(mkOpp({ id: '006Vk00000Vshh9', owner: 'Erin Fox', role: 'Account Manager', account: 'ACC-040', stage: 'Qualification', modified: '05/30/2026' }));
 // ACC-050 (Zeta, Unclassified) -> 2 opportunities.
-opps.push(mkOpp({ id: '006Vk00000VshhA', owner: 'Fay Ng', role: 'SDR', account: 'ACC-050', modified: '07/14/2026' }));
-opps.push(mkOpp({ id: '006Vk00000VshhB', owner: 'Fay Ng', role: 'Account Executive', account: 'ACC-050', modified: '03/01/2026' }));
+opps.push(mkOpp({ id: '006Vk00000VshhA', owner: 'Fay Ng', role: 'SDR', account: 'ACC-050', stage: 'Closed Lost', modified: '07/14/2026' }));
+opps.push(mkOpp({ id: '006Vk00000VshhB', owner: 'Fay Ng', role: 'Account Executive', account: 'ACC-050', stage: 'Proposal', modified: '03/01/2026' }));
 // An opportunity that maps to NO account in the report (should be ignored).
-opps.push(mkOpp({ id: '006Vk00000VshhZ', owner: 'Nobody', role: 'SDR', account: 'ACC-999', modified: '07/01/2026' }));
+opps.push(mkOpp({ id: '006Vk00000VshhZ', owner: 'Nobody', role: 'SDR', account: 'ACC-999', stage: 'Prospecting', modified: '07/01/2026' }));
 
 fs.writeFileSync(__dirname + '/sample-opps.csv', RP.toCSV(opps));
 console.log('Opps sample written: ' + opps.length + ' rows (incl header)');

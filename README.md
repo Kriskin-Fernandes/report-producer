@@ -48,6 +48,8 @@ customizable (see below).
   (the new name shows in the view and the `.xlsx`); **Revert names** restores
   the original CSV/built-in names. Every input column is available except
   U, V and Z, which are never shown.
+- Each record in a sheet view has an **eye (👁) button**; clicking it opens
+  that record's group directly in **Edit actions**.
 - **Edit actions** (all sheets) opens a full-screen mode that steps through the
   groups one at a time. The **primary account name** is the large title; the
   group's accounts are listed with a **Primary radio** to change which account
@@ -70,11 +72,11 @@ Opportunities are matched to accounts by **Account ID**; an account may have
 zero, one, or many, and opportunities that don't match any account in the
 report are ignored. Every table gains an **Opportunities** column showing a
 bubble with the **count** and how long ago the **most recently modified**
-opportunity was (e.g. `3 - 2 weeks ago`). Clicking a non-empty bubble opens a
+opportunity was (e.g. `3 (2 weeks ago)`). Clicking a non-empty bubble opens a
 popup listing that account's opportunities — **Opportunity ID** (linked to
-Salesforce, like Account ID), **Opportunity owner**, **Last modified date** and
-**Owner role** — most-recently-modified first. In the downloaded `.xlsx` the
-column holds the same summary text.
+Salesforce, like Account ID), **Opportunity owner**, **Stage**, **Last modified
+date** and **Owner role** — most-recently-modified first. In the downloaded
+`.xlsx` the column holds the same summary text.
 
 Opportunities columns (read by position):
 
@@ -84,6 +86,7 @@ Opportunities columns (read by position):
 | Opportunity owner | C | 2 |
 | Owner role | D | 3 |
 | Account ID (links to the account) | F | 5 |
+| Stage | N | 13 |
 | Last modified date (MM/DD/YYYY) | X | 23 |
 
 ## Formatting applied
