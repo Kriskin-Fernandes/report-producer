@@ -25,9 +25,9 @@ and emphasized with bold text.
 
 | Sheet | Theme | Membership | Default columns |
 | --- | --- | --- | --- |
-| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Reason, Remarks |
+| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Account Manager, Reason, Remarks |
 | **Problematic duplicates** | light peach | Every other classified group. | …+ **Notes** (before Remarks) |
-| **Unclassified** | light gray | Groups whose records are all Unclassified (plus any group without a clean Primary). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Notes, Remarks |
+| **Unclassified** | light gray | Groups whose records are all Unclassified (plus any group without a clean Primary). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Account Manager, Notes, Remarks |
 
 Columns are the *default* — each sheet's shown/exported columns are fully
 customizable (see below).
@@ -133,6 +133,7 @@ wrong report columns — check your export matches.
 | Complexity | Z | 25 |
 | Relationships | AA | 26 |
 | Country conflicts | AB | 27 |
+| Account Manager | AD | 29 |
 
 ## Deploy on GitHub Pages
 

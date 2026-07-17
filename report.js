@@ -27,7 +27,8 @@
     reason: 24,          // Y
     complexity: 25,      // Z  - complexity ("- note" suffix); never displayed
     relationships: 26,   // AA
-    conflicts: 27        // AB
+    conflicts: 27,       // AB
+    accountManager: 29   // AD
   };
 
   // Columns never shown anywhere (grouping key U, V, complexity Z).
@@ -72,15 +73,16 @@
   function defId() { return makeField('id', 'Account ID', 'id', { src: COL.accountId, mono: 1, link: 1, width: 20 }); }
   function defType() { return makeField('type', 'Type', 'data', { src: COL.type, align: 'center', width: 16 }); }
   function defOwner() { return makeField('owner', 'Owner', 'data', { src: COL.owner, width: 20 }); }
+  function defManager() { return makeField('manager', 'Account Manager', 'data', { src: COL.accountManager, width: 22 }); }
   function defReason() { return makeField('reason', 'Reason', 'data', { src: COL.reason, wrap: 1, width: 42 }); }
   function defNotes() { return makeField('notes', 'Notes', 'notes', { group: 1, fit: 1, width: 42 }); }
   function defRemarks() { return makeField('remarks', 'Remarks', 'remarks', { group: 1, fit: 1, width: 40 }); }
 
   // Default displayed fields per sheet (Alias sits right of Account Name).
   var DISPLAYED = {
-    likely: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defReason(), defRemarks()]; },
-    attention: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defReason(), defNotes(), defRemarks()]; },
-    unclassified: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defNotes(), defRemarks()]; }
+    likely: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defReason(), defRemarks()]; },
+    attention: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defReason(), defNotes(), defRemarks()]; },
+    unclassified: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defNotes(), defRemarks()]; }
   };
 
   // ---- Helpers --------------------------------------------------------------

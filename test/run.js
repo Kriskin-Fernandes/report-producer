@@ -30,13 +30,13 @@ eq([likely.editable, attention.editable, unclassified.editable], [true, true, tr
 
 // Displayed fields, with Alias right of Account Name.
 eq(labels(RP.displayedFields(likely)),
-  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Reason', 'Remarks'],
-  'Likely displayed fields (Alias after Account Name)');
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Reason', 'Remarks'],
+  'Likely displayed fields (Account Manager after Owner)');
 eq(labels(RP.displayedFields(attention)),
-  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Reason', 'Notes', 'Remarks'],
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Reason', 'Notes', 'Remarks'],
   'Problematic displayed fields');
 eq(labels(RP.displayedFields(unclassified)),
-  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Notes', 'Remarks'],
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Notes', 'Remarks'],
   'Unclassified displayed fields (has Remarks now)');
 
 // Hidden (detail) fields.
@@ -53,6 +53,13 @@ assert(allSrcs.indexOf(20) === -1 && allSrcs.indexOf(21) === -1 && allSrcs.index
 // Alias field maps to column B.
 var aliasField = RP.displayedFields(likely).filter(function (f) { return f.id === 'alias'; })[0];
 eq(aliasField.src, RP.COL.alias, 'Alias field source = column B');
+
+// Account Manager maps to column AD and sits right after Owner.
+var likelyDisplayed = RP.displayedFields(likely);
+var ownerPos = likelyDisplayed.findIndex(function (f) { return f.id === 'owner'; });
+eq(likelyDisplayed[ownerPos + 1].id, 'manager', 'Account Manager is right after Owner');
+var mgrField = likelyDisplayed.filter(function (f) { return f.id === 'manager'; })[0];
+eq(mgrField.src, RP.COL.accountManager, 'Account Manager field source = column AD');
 
 // ID field is a monospace Salesforce link.
 var idField = RP.displayedFields(likely).filter(function (f) { return f.id === 'id'; })[0];
@@ -71,6 +78,8 @@ var actionF = RP.displayedFields(likely).filter(function (f) { return f.id === '
 eq(RP.fieldValue(nameF, acme, acme.rows[0], 0), 'Acme, Inc.', 'name field value');
 eq(RP.fieldValue(idF, acme, acme.rows[0], 0), 'ACC-001', 'id field value');
 eq(RP.fieldValue(aliasF, acme, acme.rows[0], 0), 'ACME Holdings', 'alias field value (col B)');
+var mgrF = RP.displayedFields(likely).filter(function (f) { return f.id === 'manager'; })[0];
+eq(RP.fieldValue(mgrF, acme, acme.rows[0], 0), 'Grace Hopper', 'Account Manager value (col AD)');
 eq(RP.fieldValue(classF, acme, acme.rows[0], 0), 'Primary', 'classification value from row');
 eq(RP.fieldValue(actionF, acme, acme.rows[0], 0), 'None', 'action shows on top row');
 eq(RP.fieldValue(actionF, acme, acme.rows[1], 1), '', 'action blank on duplicate row');
