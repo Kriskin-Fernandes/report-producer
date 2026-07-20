@@ -72,10 +72,12 @@ html, body {
 .card h3 { margin: 0 0 10px; font-size: 1.02rem; }
 .muted { color: var(--muted); font-size: .9rem; }
 
-.top-row { display: flex; gap: 18px; align-items: stretch; margin-bottom: 18px; }
-.top-row .upload-card { flex: 1 1 50%; min-width: 0; display: flex; flex-direction: column; }
+/* One row: Duplicate CSV (25%) · Opportunities CSV (25%) · Dashboard (50%).
+   Grow weights give 25/25/50 with the dashboard shown, 50/50 before it. */
+.top-row { display: flex; gap: 18px; align-items: stretch; margin-bottom: 18px; flex-wrap: wrap; }
+.top-row .upload-card { flex: 1 1 0; min-width: 220px; display: flex; flex-direction: column; }
+.top-row .dash-card { flex: 2 1 0; min-width: 300px; }
 .top-row .upload-card .dropzone { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; }
-.dash-card { margin-bottom: 18px; }
 .opt-tag { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: #f1f5f9; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 .opps-clear { margin-top: 12px; align-self: flex-start; font-size: .82rem; padding: 6px 12px; }
 
@@ -111,6 +113,11 @@ html, body {
 .stat.s1 .num { color: #047857; }
 .stat.s2 .num { color: #b45309; }
 .stat.s3 .num { color: #6d28d9; }
+.stat.s4 .num { color: #3730a3; }
+.dark .stat.s1 .num { color: #34d399; }
+.dark .stat.s2 .num { color: #fbbf24; }
+.dark .stat.s3 .num { color: #c4b5fd; }
+.dark .stat.s4 .num { color: #a5b4fc; }
 
 .warnings { margin-top: 16px; background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 10px; padding: 12px 16px; }
 .warnings h3 { margin: 0 0 8px; color: var(--warn-ink); }
@@ -249,3 +256,64 @@ html, body {
   .action-btn { min-height: 90px; }
   .cf-cols { flex-direction: column; }
 }
+
+/* ---- Dark mode (toggled via .dark on <html>) ---------------------------- */
+.dark {
+  --card: #111827;
+  --ink: #e5e7eb;
+  --ink-soft: #cbd5e1;
+  --muted: #94a3b8;
+  --line: #334155;
+}
+.dark .dropzone { background: #0f172a; border-color: #334155; }
+.dark .dropzone:hover, .dark .dropzone:focus { background: #16233c; border-color: var(--brand); }
+.dark .dropzone.drag { background: #1c2f4d; }
+.dark .stat { background: #0f172a; border-color: var(--line); }
+.dark .opt-tag { background: #0f172a; }
+.dark .btn { background: #1e293b; color: var(--ink); border-color: var(--line); }
+.dark .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.dark .tabs { background: #0f172a; border-color: var(--line); }
+.dark .tab { color: var(--ink-soft); }
+.dark .tab.active { background: #1e293b; color: #fff; }
+.dark .tab .tab-count { background: #334155; color: #e5e7eb; }
+.dark .tab.active .tab-count { background: var(--brand); color: #fff; }
+
+.dark .table-scroll { border-color: var(--line); }
+.dark .pv { color: var(--ink); }
+.dark .pv td { border-color: #334155; }
+.dark .pv .blank td { background: var(--card); }
+.dark .pv .primary td { color: #fff; }
+.dark .pv td a { color: #7db1ff; }
+.dark .pv .detail { background: #0f172a; color: var(--ink-soft); }
+/* Keep dark text readable on the pastel section-header fills */
+.dark .theme-blue .title td, .dark .theme-blue .desc td, .dark .theme-blue .head td,
+.dark .theme-peach .title td, .dark .theme-peach .desc td, .dark .theme-peach .head td,
+.dark .theme-gray .title td, .dark .theme-gray .desc td, .dark .theme-gray .head td { color: #0f172a; }
+
+.dark .info-pop { background: #111827; color: var(--ink); border-color: var(--line); }
+.dark .info-pop code { background: rgba(125, 177, 255, .15); }
+.dark .info-pop.ok-pop { background: #0f2a20; color: #a7f3d0; border-color: #14532d; }
+.dark .muted { color: var(--muted); }
+
+.dark .edit-overlay { background: #0b1220; }
+.dark .edit-remarks input, .dark .cf-rename-input { background: #0f172a; color: var(--ink); border-color: var(--line); }
+.dark .action-btn { background: #111827; color: var(--ink-soft); border-color: var(--line); }
+.dark .action-btn:hover { color: #fff; }
+.dark .action-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.dark .nav-btn { background: #111827; color: var(--ink-soft); border-color: var(--line); }
+.dark .nav-btn:hover { background: #16233c; color: #fff; }
+.dark .edit-note, .dark .edit-tag { background: #3a2a1a; border-color: #7c4a1e; color: #f4c79e; }
+
+.dark .cf-modal { background: #111827; color: var(--ink); }
+.dark .cf-list { background: #0f172a; border-color: var(--line); }
+.dark .cf-item { background: #1e293b; border-color: var(--line); }
+.dark .row-edit:hover { background: #16233c; }
+.dark .row-del:hover { background: #3f1d1d; }
+
+.dark .opps-bubble { background: #1e293b; border-color: #334155; color: #c7d2fe; }
+.dark .opps-bubble:hover { background: #24304a; }
+.dark .opps-bubble.zero { background: #0f172a; color: var(--muted); }
+
+.dark .error { background: #3f1d1d; color: #fecaca; border-color: #7f1d1d; }
+.dark .warnings { background: #3a2e12; color: #fde68a; border-color: #78591c; }
+.dark .warnings h3 { color: #fde68a; }

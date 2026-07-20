@@ -35,10 +35,14 @@ customizable (see below).
 
 ## Using the app
 
-- Three **top-right buttons** open popups: **?** (a full how-to tutorial),
-  **🍪** (storage & cookie policy), and **🔒** (privacy notice).
-- The **export CSV** and the optional **Opportunities CSV** have two equal
-  upload areas side by side; the **Report** (summary + download) sits below.
+- Four **top-right buttons**: **🌙 / ☀** toggles **dark mode** (remembered on
+  this device), and **?** (how-to tutorial), **🍪** (storage & cookie policy)
+  and **🔒** (privacy notice) each open a popup.
+- The top row holds three cards: **Duplicate accounts CSV** (left 25%), the
+  optional **Opportunities CSV** (next 25%), and the **Report** dashboard
+  (right 50%). The dashboard shows group counts, records read, and — once an
+  Opportunities file is loaded — how many opportunities linked to how many
+  accounts.
 - The report table uses the **full screen width**; while you scroll it the
   tab/Customize/Edit buttons stay put — only the rows scroll.
 - A **tab selector** switches between full views of each sheet.
@@ -53,8 +57,8 @@ customizable (see below).
   (the new name shows in the view and the `.xlsx`); **Revert names** restores
   the original CSV/built-in names. Every input column is available except
   U, V and Z, which are never shown.
-- Each record in a sheet view has an **eye (👁) button**; clicking it opens
-  that record's group directly in **Edit actions**.
+- Each group's first row has an **eye (👁) button**; clicking it opens that
+  group directly in **Edit actions**.
 - **Edit actions** (all sheets) opens a full-screen mode that steps through the
   groups one at a time. The **primary account name** is the large title; the
   group's accounts are listed with a **Primary radio** to change which account

@@ -11,8 +11,9 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Top-right toggles: tutorial (?), storage/cookies, privacy -->
+  <!-- Top-right toggles: dark mode, tutorial (?), storage/cookies, privacy -->
   <div class="top-toggles">
+    <button id="themeBtn" class="lock-btn" type="button" aria-label="Toggle dark mode" aria-pressed="false">🌙</button>
     <button id="helpBtn" class="lock-btn" type="button" aria-label="How to use this site" aria-expanded="false">?</button>
     <button id="cookieBtn" class="lock-btn" type="button" aria-label="Storage and cookie policy" aria-expanded="false">🍪</button>
     <button id="lockBtn" class="lock-btn" type="button" aria-label="Privacy information" aria-expanded="false">🔒</button>
@@ -89,8 +90,8 @@
 
     <div class="top-row">
       <section class="card upload-card">
-        <h2>Upload the export CSV</h2>
-        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload CSV file. Click or drag and drop.">
+        <h2>Upload the Duplicate accounts CSV</h2>
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload Duplicate accounts CSV. Click or drag and drop.">
           <input id="fileInput" type="file" accept=".csv,text/csv" hidden />
           <div class="dz-inner">
             <div class="dz-icon" aria-hidden="true">⬆</div>
@@ -115,19 +116,19 @@
         <p id="oppsName" class="file-name" hidden></p>
         <button id="oppsClear" class="btn opps-clear" type="button" hidden>Remove opportunities</button>
       </section>
-    </div>
 
-    <section class="card dash-card" id="dashCard" hidden>
-      <div class="results-head">
-        <h2>Report</h2>
-        <button id="downloadBtn" class="btn primary" type="button">⬇ Download (.xlsx)</button>
-      </div>
-      <div id="stats" class="stats" aria-label="Report summary"></div>
-      <div id="warnings" class="warnings" hidden>
-        <h3>Heads up</h3>
-        <ul id="warningList"></ul>
-      </div>
-    </section>
+      <section class="card dash-card" id="dashCard" hidden>
+        <div class="results-head">
+          <h2>Report</h2>
+          <button id="downloadBtn" class="btn primary" type="button">⬇ Download (.xlsx)</button>
+        </div>
+        <div id="stats" class="stats" aria-label="Report summary"></div>
+        <div id="warnings" class="warnings" hidden>
+          <h3>Heads up</h3>
+          <ul id="warningList"></ul>
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- Full-width report viewer (buttons stay put; only the table scrolls) -->

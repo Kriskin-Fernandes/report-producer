@@ -20,7 +20,7 @@
   var els = {
     fileInput: $('fileInput'), dropzone: $('dropzone'), fileName: $('fileName'), errorBox: $('errorBox'),
     oppsInput: $('oppsInput'), oppsDropzone: $('oppsDropzone'), oppsName: $('oppsName'), oppsClear: $('oppsClear'),
-    lockBtn: $('lockBtn'), privacyPop: $('privacyPop'),
+    lockBtn: $('lockBtn'), privacyPop: $('privacyPop'), themeBtn: $('themeBtn'),
     helpBtn: $('helpBtn'), helpPop: $('helpPop'),
     cookieBtn: $('cookieBtn'), cookiePop: $('cookiePop'), cookieClear: $('cookieClear'), cookieCleared: $('cookieCleared'),
     dashCard: $('dashCard'), stats: $('stats'), warnings: $('warnings'), warningList: $('warningList'),
@@ -110,6 +110,25 @@
     clearSavedState();
     els.cookieCleared.hidden = false;
     setTimeout(function () { els.cookieCleared.hidden = true; }, 2000);
+  });
+
+  // ---- Dark mode (preference saved in local storage) -----------------------
+  var THEME_KEY = 'rp:theme';
+  function applyTheme(dark) {
+    document.documentElement.classList.toggle('dark', dark);
+    els.themeBtn.textContent = dark ? '☀' : '🌙';
+    els.themeBtn.setAttribute('aria-pressed', String(dark));
+    els.themeBtn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    applyTheme(saved === 'dark');
+  })();
+  els.themeBtn.addEventListener('click', function () {
+    var dark = !document.documentElement.classList.contains('dark');
+    applyTheme(dark);
+    try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch (e) {}
   });
 
   // ---- Download ------------------------------------------------------------
@@ -240,9 +259,9 @@
         state.opps = indexOpps(rows);
         state.oppsName = file.name;
         els.oppsName.hidden = false;
-        els.oppsName.innerHTML = 'Opportunities: <strong>' + esc(file.name) + '</strong> (' + state.opps.count + ' linked to ' + Object.keys(state.opps.byAccount).length + ' account(s))';
+        els.oppsName.innerHTML = 'Loaded: <strong>' + esc(file.name) + '</strong>'; // the linked-count stat lives on the dashboard
         els.oppsClear.hidden = false;
-        if (state.result) { applyOpps(); rerenderActive(); saveState(); }
+        if (state.result) { applyOpps(); renderStats(state.result.stats); rerenderActive(); saveState(); }
       } catch (err) {
         showError((err && err.message) || 'Could not process the Opportunities file.');
       }
@@ -260,6 +279,7 @@
       state.result.sheets.forEach(function (s) {
         s.groups.forEach(function (g) { g.rows.forEach(function (r) { r.opps = null; r.oppsSummary = ''; }); });
       });
+      renderStats(state.result.stats);
       rerenderActive();
       saveState();
     }
@@ -489,12 +509,16 @@
 
   function renderStats(s) {
     var items = [
-      { cls: 's1', num: s.section1Groups, lbl: 'Likely-dup groups' },
-      { cls: 's2', num: s.section2Groups, lbl: 'Problematic-dup groups' },
-      { cls: 's3', num: s.unclassifiedGroups, lbl: 'Unclassified groups' },
-      { cls: '', num: s.totalGroups, lbl: 'Groups total' },
+      { cls: 's1', num: s.section1Groups, lbl: 'Likely duplicates' },
+      { cls: 's2', num: s.section2Groups, lbl: 'Problematic duplicates' },
+      { cls: 's3', num: s.unclassifiedGroups, lbl: 'Unclassified' },
+      { cls: '', num: s.totalGroups, lbl: 'Account groups total' },
       { cls: '', num: s.totalDataRows, lbl: 'Records read' }
     ];
+    if (state.opps) {
+      var accts = Object.keys(state.opps.byAccount).length;
+      items.push({ cls: 's4', num: state.opps.count, lbl: 'Opportunities · ' + accts + ' account' + (accts === 1 ? '' : 's') });
+    }
     els.stats.innerHTML = items.map(function (it) {
       return '<div class="stat ' + it.cls + '"><div class="num">' + it.num + '</div><div class="lbl">' + esc(it.lbl) + '</div></div>';
     }).join('');
@@ -568,9 +592,12 @@
       sheet.groups.forEach(function (g, gi) {
         if (gi > 0) html += '<tr class="blank"><td colspan="' + span + '"></td></tr>';
         g.rows.forEach(function (row, ri) {
+          // One eye button per group, on the group's first row only.
           var eye = withEye
-            ? '<td class="pv-eye"><button type="button" class="row-edit" data-group="' + gi +
-              '" aria-label="Open this group in edit actions" title="Edit this group">&#128065;</button></td>'
+            ? '<td class="pv-eye">' + (ri === 0
+                ? '<button type="button" class="row-edit" data-group="' + gi +
+                  '" aria-label="Open this group in edit actions" title="Edit this group">&#128065;</button>'
+                : '') + '</td>'
             : '';
           html += '<tr' + (row.isPrimary ? ' class="primary"' : '') + '>' + eye +
             cols.map(function (c) { return td(c, g, row, ri); }).join('') + '</tr>';
