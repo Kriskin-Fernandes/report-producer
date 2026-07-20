@@ -13,7 +13,7 @@ var EXTRA = { region: 4, mid: 8, created: 12 };
 
 function mk(o) {
   var r = [];
-  for (var i = 0; i < 30; i++) r.push(''); // filler columns stay empty (no header)
+  for (var i = 0; i < 31; i++) r.push(''); // filler columns stay empty (no header)
   Object.keys(o).forEach(function (k) {
     var idx = RP.COL[k] != null ? RP.COL[k] : EXTRA[k];
     r[idx] = o[k];
@@ -22,7 +22,7 @@ function mk(o) {
 }
 
 var header = [];
-for (var i = 0; i < 30; i++) header.push(''); // unused columns have blank headers
+for (var i = 0; i < 31; i++) header.push(''); // unused columns have blank headers
 header[RP.COL.accountName] = 'Account Name';
 header[RP.COL.accountId] = 'Account ID';
 header[RP.COL.type] = 'Type';
@@ -34,6 +34,7 @@ header[RP.COL.complexity] = 'Complexity';
 header[RP.COL.relationships] = 'Relationships';
 header[RP.COL.conflicts] = 'Country Conflict';
 header[RP.COL.accountManager] = 'Account Manager';
+header[RP.COL.capturedAmount] = 'Total Captured Amount ($USD)';
 header[EXTRA.region] = 'Region';
 header[EXTRA.mid] = 'MID';
 header[EXTRA.created] = 'Created';
@@ -41,7 +42,7 @@ header[EXTRA.created] = 'Created';
 var rows = [header];
 
 // --- Section 1 (Likely duplicates): classified, Low, no rel, no conflict ---
-rows.push(mk({ accountName: 'Acme, Inc.', alias: 'ACME Holdings', accountId: 'ACC-001', region: 'EMEA', mid: 'mid_1001', created: '2024-01-15', type: 'Enterprise', owner: 'Alice Smith', accountManager: 'Grace Hopper', group: 'acme.com', classification: 'Primary', reason: 'Same stripped domain', complexity: 'Low' }));
+rows.push(mk({ accountName: 'Acme, Inc.', alias: 'ACME Holdings', accountId: 'ACC-001', region: 'EMEA', mid: 'mid_1001', created: '2024-01-15', type: 'Enterprise', owner: 'Alice Smith', accountManager: 'Grace Hopper', capturedAmount: '1,250,000.00', group: 'acme.com', classification: 'Primary', reason: 'Same stripped domain', complexity: 'Low' }));
 rows.push(mk({ accountName: 'ACME LTD', alias: 'ACME Trading', accountId: 'ACC-002', type: 'Enterprise', owner: 'Alice Smith', group: 'acme.com', classification: 'Duplicate', complexity: 'Low' }));
 rows.push(mk({ accountName: 'Acme Group', accountId: 'ACC-003', type: 'SMB', owner: 'Alice Smith', group: 'acme.com', classification: 'Duplicate', complexity: 'Low' }));
 

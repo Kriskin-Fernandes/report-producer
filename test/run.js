@@ -30,13 +30,13 @@ eq([likely.editable, attention.editable, unclassified.editable], [true, true, tr
 
 // Displayed fields, with Alias right of Account Name.
 eq(labels(RP.displayedFields(likely)),
-  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Reason', 'Remarks'],
-  'Likely displayed fields (Account Manager after Owner)');
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Total Captured Amount ($USD)', 'Reason', 'Remarks'],
+  'Likely displayed fields (Captured Amount after Account Manager)');
 eq(labels(RP.displayedFields(attention)),
-  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Reason', 'Notes', 'Remarks'],
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Total Captured Amount ($USD)', 'Reason', 'Notes', 'Remarks'],
   'Problematic displayed fields');
 eq(labels(RP.displayedFields(unclassified)),
-  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Notes', 'Remarks'],
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Total Captured Amount ($USD)', 'Notes', 'Remarks'],
   'Unclassified displayed fields (has Remarks now)');
 
 // Hidden (detail) fields.
@@ -61,6 +61,12 @@ eq(likelyDisplayed[ownerPos + 1].id, 'manager', 'Account Manager is right after 
 var mgrField = likelyDisplayed.filter(function (f) { return f.id === 'manager'; })[0];
 eq(mgrField.src, RP.COL.accountManager, 'Account Manager field source = column AD');
 
+// Total Captured Amount maps to column AE and sits right after Account Manager.
+var mgrPos = likelyDisplayed.findIndex(function (f) { return f.id === 'manager'; });
+eq(likelyDisplayed[mgrPos + 1].id, 'captured', 'Captured Amount is right after Account Manager');
+var capField = likelyDisplayed.filter(function (f) { return f.id === 'captured'; })[0];
+eq(capField.src, RP.COL.capturedAmount, 'Captured Amount field source = column AE');
+
 // ID field is a monospace Salesforce link.
 var idField = RP.displayedFields(likely).filter(function (f) { return f.id === 'id'; })[0];
 assert(idField.link === true && idField.mono === true, 'Account ID field is link + monospace');
@@ -80,6 +86,8 @@ eq(RP.fieldValue(idF, acme, acme.rows[0], 0), 'ACC-001', 'id field value');
 eq(RP.fieldValue(aliasF, acme, acme.rows[0], 0), 'ACME Holdings', 'alias field value (col B)');
 var mgrF = RP.displayedFields(likely).filter(function (f) { return f.id === 'manager'; })[0];
 eq(RP.fieldValue(mgrF, acme, acme.rows[0], 0), 'Grace Hopper', 'Account Manager value (col AD)');
+var capF = RP.displayedFields(likely).filter(function (f) { return f.id === 'captured'; })[0];
+eq(RP.fieldValue(capF, acme, acme.rows[0], 0), '1,250,000.00', 'Captured Amount value (col AE)');
 eq(RP.fieldValue(classF, acme, acme.rows[0], 0), 'Primary', 'classification value from row');
 eq(RP.fieldValue(actionF, acme, acme.rows[0], 0), 'None', 'action shows on top row');
 eq(RP.fieldValue(actionF, acme, acme.rows[1], 1), '', 'action blank on duplicate row');

@@ -61,7 +61,8 @@ html, body {
 .help-list { margin: 8px 0 0; padding-left: 20px; font-size: .88rem; }
 .help-list li { margin: 6px 0; }
 .pop-close { position: absolute; top: 6px; right: 10px; border: none; background: none; font-size: 1.3rem; cursor: pointer; color: inherit; }
-.cookie-cleared { margin-left: 10px; color: var(--ok-ink); font-size: .85rem; font-weight: 600; }
+.cookie-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cookie-cleared { display: inline-block; margin-top: 8px; color: var(--ok-ink); font-size: .85rem; font-weight: 600; }
 
 /* Cards + top row */
 .card {
@@ -74,23 +75,23 @@ html, body {
 
 /* One row: Duplicate CSV (25%) · Opportunities CSV (25%) · Dashboard (50%).
    Grow weights give 25/25/50 with the dashboard shown, 50/50 before it. */
-.top-row { display: flex; gap: 18px; align-items: stretch; margin-bottom: 18px; flex-wrap: wrap; }
+.top-row { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; }
 .top-row .upload-card { flex: 1 1 0; min-width: 220px; display: flex; flex-direction: column; }
 .top-row .dash-card { flex: 2 1 0; min-width: 300px; }
-.top-row .upload-card .dropzone { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; }
+.top-row .upload-card .dropzone { display: flex; align-items: center; justify-content: center; }
 .opt-tag { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: #f1f5f9; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 .opps-clear { margin-top: 12px; align-self: flex-start; font-size: .82rem; padding: 6px 12px; }
 
-/* Dropzone */
+/* Dropzone — compact single line */
 .dropzone {
   border: 2px dashed #cbd5e1; border-radius: var(--radius);
-  padding: 26px 20px; text-align: center; cursor: pointer;
+  padding: 16px 18px; text-align: center; cursor: pointer; width: 100%;
   transition: border-color .15s, background .15s; background: #f8fafc;
 }
 .dropzone:hover, .dropzone:focus { border-color: var(--brand); background: #eff6ff; outline: none; }
 .dropzone.drag { border-color: var(--brand); background: #dbeafe; }
-.dz-icon { width: 42px; height: 42px; line-height: 42px; margin: 0 auto 8px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 1.2rem; }
-.dz-hint { color: var(--muted); font-size: .83rem; margin-top: 6px; }
+.dz-text { font-size: .95rem; }
+.dz-up { color: var(--brand); font-weight: 700; margin-right: 4px; }
 .file-name { margin: 12px 0 0; font-size: .9rem; color: var(--ink-soft); }
 .file-name strong { color: var(--ink); }
 .error { margin: 12px 0 0; background: var(--err-bg); color: var(--err-ink); border: 1px solid var(--err-line); border-radius: 10px; padding: 12px 14px; font-size: .9rem; }
@@ -114,10 +115,12 @@ html, body {
 .stat.s2 .num { color: #b45309; }
 .stat.s3 .num { color: #6d28d9; }
 .stat.s4 .num { color: #3730a3; }
+.stat.s5 .num { color: #0e7490; }
 .dark .stat.s1 .num { color: #34d399; }
 .dark .stat.s2 .num { color: #fbbf24; }
 .dark .stat.s3 .num { color: #c4b5fd; }
 .dark .stat.s4 .num { color: #a5b4fc; }
+.dark .stat.s5 .num { color: #67e8f9; }
 
 .warnings { margin-top: 16px; background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 10px; padding: 12px 16px; }
 .warnings h3 { margin: 0 0 8px; color: var(--warn-ink); }

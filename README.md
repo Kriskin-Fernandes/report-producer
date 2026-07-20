@@ -26,7 +26,7 @@ and emphasized with bold text.
 
 | Sheet | Theme | Membership | Default columns |
 | --- | --- | --- | --- |
-| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Account Manager, Reason, Remarks |
+| **Likely duplicates** | light blue | Classified groups that are **Low** complexity with **no** relationships and **no** country conflicts (on any record). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Account Manager, Total Captured Amount ($USD), Reason, Remarks |
 | **Problematic duplicates** | light peach | Every other classified group. | …+ **Notes** (before Remarks) |
 | **Unclassified** | light gray | Groups whose records are all Unclassified (plus any group without a clean Primary). | Action, Classification, Account Name, Alias account, Account ID, Type, Owner, Account Manager, Notes, Remarks |
 
@@ -42,7 +42,7 @@ customizable (see below).
   optional **Opportunities CSV** (next 25%), and the **Report** dashboard
   (right 50%). The dashboard shows group counts, records read, and — once an
   Opportunities file is loaded — how many opportunities linked to how many
-  accounts.
+  accounts, plus how many **milliseconds** the processing took.
 - The report table uses the **full screen width**; while you scroll it the
   tab/Customize/Edit buttons stay put — only the rows scroll.
 - A **tab selector** switches between full views of each sheet.
@@ -111,7 +111,8 @@ Re-upload the **same file** after a reload and your changes are restored.
 This uses local storage, **not cookies**: unlike cookies, local storage is
 never attached to any request, so nothing is transmitted (the CSP blocks
 outbound requests regardless). It stays on the device until cleared — the
-**🍪** popup has a **Clear saved edits** button, or clear site data in your
+**🍪** popup has **Clear saved edits** (per-file edits) and **Clear all stored
+data** (edits **and** the dark-mode preference), or clear site data in your
 browser.
 
 ## Formatting applied
@@ -159,6 +160,7 @@ wrong report columns — check your export matches.
 | Relationships | AA | 26 |
 | Country conflicts | AB | 27 |
 | Account Manager | AD | 29 |
+| Total Captured Amount ($USD) | AE | 30 |
 
 ## Deploy on GitHub Pages
 

@@ -46,7 +46,10 @@
       same file after a reload and your changes come back. It stays on this
       device until you clear it.
     </p>
-    <button id="cookieClear" class="btn" type="button">Clear saved edits</button>
+    <div class="cookie-actions">
+      <button id="cookieClear" class="btn" type="button">Clear saved edits</button>
+      <button id="cookieClearAll" class="btn" type="button">Clear all stored data</button>
+    </div>
     <span id="cookieCleared" class="cookie-cleared" hidden>Cleared ✓</span>
   </div>
 
@@ -90,13 +93,11 @@
 
     <div class="top-row">
       <section class="card upload-card">
-        <h2>Upload the Duplicate accounts CSV</h2>
-        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload Duplicate accounts CSV. Click or drag and drop.">
+        <h2>Duplicate Accounts CSV</h2>
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload the Duplicate accounts CSV. Click or drag and drop.">
           <input id="fileInput" type="file" accept=".csv,text/csv" hidden />
           <div class="dz-inner">
-            <div class="dz-icon" aria-hidden="true">⬆</div>
-            <div class="dz-text"><strong>Click to choose a CSV</strong> or drag &amp; drop it here</div>
-            <div class="dz-hint">First row = column headings, records below.</div>
+            <div class="dz-text"><span class="dz-up" aria-hidden="true">⬆</span> <strong>Upload the Duplicate accounts CSV</strong></div>
           </div>
         </div>
         <p id="fileName" class="file-name" hidden></p>
@@ -105,12 +106,10 @@
 
       <section class="card upload-card">
         <h2>Opportunities CSV <span class="opt-tag">optional</span></h2>
-        <div id="oppsDropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload Opportunities CSV. Click or drag and drop.">
+        <div id="oppsDropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload the Opportunities CSV. Click or drag and drop.">
           <input id="oppsInput" type="file" accept=".csv,text/csv" hidden />
           <div class="dz-inner">
-            <div class="dz-icon" aria-hidden="true">⬆</div>
-            <div class="dz-text"><strong>Click to choose the Opportunities CSV</strong> or drag &amp; drop it here</div>
-            <div class="dz-hint">Links opportunities to accounts by Account ID.</div>
+            <div class="dz-text"><span class="dz-up" aria-hidden="true">⬆</span> <strong>Upload the Opportunities CSV</strong></div>
           </div>
         </div>
         <p id="oppsName" class="file-name" hidden></p>

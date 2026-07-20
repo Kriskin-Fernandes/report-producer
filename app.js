@@ -22,7 +22,7 @@
     oppsInput: $('oppsInput'), oppsDropzone: $('oppsDropzone'), oppsName: $('oppsName'), oppsClear: $('oppsClear'),
     lockBtn: $('lockBtn'), privacyPop: $('privacyPop'), themeBtn: $('themeBtn'),
     helpBtn: $('helpBtn'), helpPop: $('helpPop'),
-    cookieBtn: $('cookieBtn'), cookiePop: $('cookiePop'), cookieClear: $('cookieClear'), cookieCleared: $('cookieCleared'),
+    cookieBtn: $('cookieBtn'), cookiePop: $('cookiePop'), cookieClear: $('cookieClear'), cookieClearAll: $('cookieClearAll'), cookieCleared: $('cookieCleared'),
     dashCard: $('dashCard'), stats: $('stats'), warnings: $('warnings'), warningList: $('warningList'),
     downloadBtn: $('downloadBtn'),
     viewer: $('viewer'), sheetTabs: $('sheetTabs'), customizeBtn: $('customizeBtn'), editBtn: $('editBtn'),
@@ -45,8 +45,10 @@
     cfEditingId: null,       // field id whose name is being edited inline
     opps: null,              // { byAccount: {id: [opp...]}, count, computedAt }
     oppsName: '',
-    csvKey: null             // localStorage key derived from the uploaded CSV
+    csvKey: null,            // localStorage key derived from the uploaded CSV
+    processMs: null          // how long parsing + building the report took
   };
+  var now = (typeof performance !== 'undefined' && performance.now) ? function () { return performance.now(); } : function () { return Date.now(); };
 
   var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   var lastName = 'duplicates-report.xlsx';
@@ -106,10 +108,15 @@
       }
     });
   });
-  els.cookieClear.addEventListener('click', function () {
-    clearSavedState();
+  function flashCleared() {
     els.cookieCleared.hidden = false;
     setTimeout(function () { els.cookieCleared.hidden = true; }, 2000);
+  }
+  els.cookieClear.addEventListener('click', function () { clearSavedState(); flashCleared(); });
+  els.cookieClearAll.addEventListener('click', function () {
+    clearAllStored();       // edits + theme preference
+    applyTheme(false);      // reset to light
+    flashCleared();
   });
 
   // ---- Dark mode (preference saved in local storage) -----------------------
@@ -232,12 +239,14 @@
   }
 
   function process(text, name) {
+    var t0 = now();
     state.result = RP.buildReport(RP.parseCSV(text));
     state.activeSheet = 0;
     lastName = deriveName(name);
     state.csvKey = STORAGE_PREFIX + hashText(text);
     if (state.opps) applyOpps();  // re-attach opportunities to the fresh model
     restoreState();               // re-apply any saved edits for this exact file
+    state.processMs = Math.round(now() - t0);
     renderStats(state.result.stats);
     renderWarnings(state.result.warnings);
     buildTabs();
@@ -496,16 +505,18 @@
     }
   }
 
-  function clearSavedState() {
+  function clearKeys(prefix) {
     try {
       var keys = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf(STORAGE_PREFIX) === 0) keys.push(k);
+        if (k && k.indexOf(prefix) === 0) keys.push(k);
       }
       keys.forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) { /* ignore */ }
   }
+  function clearSavedState() { clearKeys(STORAGE_PREFIX); }      // per-file edits only
+  function clearAllStored() { clearKeys('rp:'); }               // edits + theme + anything else
 
   function renderStats(s) {
     var items = [
@@ -518,6 +529,9 @@
     if (state.opps) {
       var accts = Object.keys(state.opps.byAccount).length;
       items.push({ cls: 's4', num: state.opps.count, lbl: 'Opportunities · ' + accts + ' account' + (accts === 1 ? '' : 's') });
+    }
+    if (state.processMs != null) {
+      items.push({ cls: 's5', num: state.processMs, lbl: 'Milliseconds to process' });
     }
     els.stats.innerHTML = items.map(function (it) {
       return '<div class="stat ' + it.cls + '"><div class="num">' + it.num + '</div><div class="lbl">' + esc(it.lbl) + '</div></div>';
