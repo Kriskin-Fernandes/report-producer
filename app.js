@@ -19,8 +19,10 @@
 
   var els = {
     fileInput: $('fileInput'), dropzone: $('dropzone'), fileName: $('fileName'), errorBox: $('errorBox'),
-    oppsInput: $('oppsInput'), oppsBtn: $('oppsBtn'), oppsName: $('oppsName'), oppsClear: $('oppsClear'),
-    lockBtn: $('lockBtn'), privacyPop: $('privacyPop'), privacyClose: $('privacyClose'),
+    oppsInput: $('oppsInput'), oppsDropzone: $('oppsDropzone'), oppsName: $('oppsName'), oppsClear: $('oppsClear'),
+    lockBtn: $('lockBtn'), privacyPop: $('privacyPop'),
+    helpBtn: $('helpBtn'), helpPop: $('helpPop'),
+    cookieBtn: $('cookieBtn'), cookiePop: $('cookiePop'), cookieClear: $('cookieClear'), cookieCleared: $('cookieCleared'),
     dashCard: $('dashCard'), stats: $('stats'), warnings: $('warnings'), warningList: $('warningList'),
     downloadBtn: $('downloadBtn'),
     viewer: $('viewer'), sheetTabs: $('sheetTabs'), customizeBtn: $('customizeBtn'), editBtn: $('editBtn'),
@@ -42,52 +44,72 @@
     cfSheet: 0,
     cfEditingId: null,       // field id whose name is being edited inline
     opps: null,              // { byAccount: {id: [opp...]}, count, computedAt }
-    oppsName: ''
+    oppsName: '',
+    csvKey: null             // localStorage key derived from the uploaded CSV
   };
 
   var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   var lastName = 'duplicates-report.xlsx';
 
-  // ---- File input ----------------------------------------------------------
-  els.dropzone.addEventListener('click', function () { els.fileInput.click(); });
-  els.dropzone.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.fileInput.click(); }
-  });
-  els.fileInput.addEventListener('change', function () {
-    if (els.fileInput.files && els.fileInput.files[0]) handleFile(els.fileInput.files[0]);
-  });
-  ['dragenter', 'dragover'].forEach(function (ev) {
-    els.dropzone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); els.dropzone.classList.add('drag'); });
-  });
-  ['dragleave', 'drop'].forEach(function (ev) {
-    els.dropzone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); els.dropzone.classList.remove('drag'); });
-  });
-  els.dropzone.addEventListener('drop', function (e) {
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-  });
-
-  // ---- Opportunities CSV (optional second upload) --------------------------
-  els.oppsBtn.addEventListener('click', function () { els.oppsInput.click(); });
-  els.oppsInput.addEventListener('change', function () {
-    if (els.oppsInput.files && els.oppsInput.files[0]) handleOppsFile(els.oppsInput.files[0]);
-  });
+  // ---- File inputs (drag + click) ------------------------------------------
+  function wireDropzone(zone, input, handler) {
+    zone.addEventListener('click', function () { input.click(); });
+    zone.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+    });
+    input.addEventListener('change', function () {
+      if (input.files && input.files[0]) handler(input.files[0]);
+    });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.add('drag'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag'); });
+    });
+    zone.addEventListener('drop', function (e) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]);
+    });
+  }
+  wireDropzone(els.dropzone, els.fileInput, handleFile);
+  wireDropzone(els.oppsDropzone, els.oppsInput, handleOppsFile);
   els.oppsClear.addEventListener('click', clearOpps);
 
-  // ---- Privacy popup -------------------------------------------------------
-  els.lockBtn.addEventListener('click', function (e) {
-    e.stopPropagation();
-    var show = els.privacyPop.hidden;
-    els.privacyPop.hidden = !show;
-    els.lockBtn.setAttribute('aria-expanded', String(show));
-  });
-  els.privacyClose.addEventListener('click', function () {
-    els.privacyPop.hidden = true; els.lockBtn.setAttribute('aria-expanded', 'false');
+  // ---- Top-right info popups (tutorial / storage / privacy) ----------------
+  var popups = [
+    { btn: els.helpBtn, pop: els.helpPop },
+    { btn: els.cookieBtn, pop: els.cookiePop },
+    { btn: els.lockBtn, pop: els.privacyPop }
+  ];
+  function closeOtherPops(except) {
+    popups.forEach(function (p) {
+      if (p.pop !== except) { p.pop.hidden = true; p.btn.setAttribute('aria-expanded', 'false'); }
+    });
+  }
+  popups.forEach(function (p) {
+    p.btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var show = p.pop.hidden;
+      closeOtherPops(p.pop);
+      p.pop.hidden = !show;
+      p.btn.setAttribute('aria-expanded', String(show));
+    });
+    var closeBtn = p.pop.querySelector('.pop-close');
+    if (closeBtn) closeBtn.addEventListener('click', function () {
+      p.pop.hidden = true; p.btn.setAttribute('aria-expanded', 'false');
+    });
   });
   document.addEventListener('click', function (e) {
-    if (els.privacyPop.hidden) return;
-    if (!els.privacyPop.contains(e.target) && e.target !== els.lockBtn) {
-      els.privacyPop.hidden = true; els.lockBtn.setAttribute('aria-expanded', 'false');
-    }
+    popups.forEach(function (p) {
+      if (p.pop.hidden) return;
+      if (!p.pop.contains(e.target) && !p.btn.contains(e.target)) {
+        p.pop.hidden = true; p.btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+  els.cookieClear.addEventListener('click', function () {
+    clearSavedState();
+    els.cookieCleared.hidden = false;
+    setTimeout(function () { els.cookieCleared.hidden = true; }, 2000);
   });
 
   // ---- Download ------------------------------------------------------------
@@ -148,7 +170,7 @@
   els.editClose.addEventListener('click', closeEdit);
   els.prevGroup.addEventListener('click', function () { navGroup(-1); });
   els.nextGroup.addEventListener('click', function () { navGroup(1); });
-  els.remarksInput.addEventListener('input', function () { currentGroup().remarks = els.remarksInput.value; });
+  els.remarksInput.addEventListener('input', function () { currentGroup().remarks = els.remarksInput.value; saveState(); });
   els.actionButtons.addEventListener('click', function (e) {
     var b = e.target.closest('.action-btn'); if (!b) return;
     setAction(b.getAttribute('data-action'));
@@ -156,6 +178,10 @@
   els.editTable.addEventListener('change', function (e) {
     var r = e.target.closest('input[type="radio"]'); if (!r) return;
     setPrimary(parseInt(r.getAttribute('data-row'), 10));
+  });
+  els.editTable.addEventListener('click', function (e) {
+    var d = e.target.closest('.row-del'); if (!d) return;
+    deleteRecord(parseInt(d.getAttribute('data-row'), 10));
   });
   document.addEventListener('keydown', function (e) {
     if (!state.edit.active || !els.customizeOverlay.hidden || !els.oppsOverlay.hidden) return;
@@ -190,7 +216,9 @@
     state.result = RP.buildReport(RP.parseCSV(text));
     state.activeSheet = 0;
     lastName = deriveName(name);
-    if (state.opps) applyOpps(); // re-attach opportunities to the fresh model
+    state.csvKey = STORAGE_PREFIX + hashText(text);
+    if (state.opps) applyOpps();  // re-attach opportunities to the fresh model
+    restoreState();               // re-apply any saved edits for this exact file
     renderStats(state.result.stats);
     renderWarnings(state.result.warnings);
     buildTabs();
@@ -214,7 +242,7 @@
         els.oppsName.hidden = false;
         els.oppsName.innerHTML = 'Opportunities: <strong>' + esc(file.name) + '</strong> (' + state.opps.count + ' linked to ' + Object.keys(state.opps.byAccount).length + ' account(s))';
         els.oppsClear.hidden = false;
-        if (state.result) { applyOpps(); rerenderActive(); }
+        if (state.result) { applyOpps(); rerenderActive(); saveState(); }
       } catch (err) {
         showError((err && err.message) || 'Could not process the Opportunities file.');
       }
@@ -233,6 +261,7 @@
         s.groups.forEach(function (g) { g.rows.forEach(function (r) { r.opps = null; r.oppsSummary = ''; }); });
       });
       rerenderActive();
+      saveState();
     }
   }
 
@@ -343,6 +372,119 @@
 
   function rerenderActive() {
     if (state.edit.active) renderEditGroup(); else renderSheet();
+  }
+
+  // ---- Local persistence ---------------------------------------------------
+  // Edits are remembered in the browser's own localStorage (NOT cookies, so
+  // nothing is ever transmitted), keyed to a fingerprint of the uploaded CSV.
+  // Re-uploading the same file after a reload restores actions, primary
+  // choices, removed records and the customize layout.
+  var STORAGE_PREFIX = 'rp:v1:';
+
+  function hashText(t) {
+    t = String(t == null ? '' : t);
+    var h = 5381;
+    for (var i = 0; i < t.length; i++) { h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
+    return (h >>> 0).toString(16) + '.' + t.length;
+  }
+
+  function rowAcct(row) {
+    return row && row.raw ? String(row.raw[RP.COL.accountId] == null ? '' : row.raw[RP.COL.accountId]).trim() : '';
+  }
+
+  function saveState() {
+    if (!state.result || !state.csvKey) return;
+    try {
+      var data = { sheets: {} };
+      state.result.sheets.forEach(function (sheet) {
+        var groups = {};
+        sheet.groups.forEach(function (g) {
+          var primary = g.rows.filter(function (r) { return r.isPrimary; })[0];
+          groups[g.key] = {
+            order: g.rows.map(rowAcct),
+            primaryId: primary ? rowAcct(primary) : null,
+            action: g.action,
+            actionChosen: !!g.actionChosen,
+            remarks: g.remarks || ''
+          };
+        });
+        data.sheets[sheet.key] = {
+          fields: sheet.fields.map(function (f) { return { id: f.id, label: f.label }; }),
+          displayCount: sheet.displayCount,
+          groups: groups
+        };
+      });
+      localStorage.setItem(state.csvKey, JSON.stringify(data));
+    } catch (e) { /* storage unavailable/full — silently skip */ }
+  }
+
+  function restoreState() {
+    if (!state.result || !state.csvKey) return;
+    var data;
+    try {
+      var raw = localStorage.getItem(state.csvKey);
+      if (!raw) return;
+      data = JSON.parse(raw);
+    } catch (e) { return; }
+    if (!data || !data.sheets) return;
+
+    state.result.sheets.forEach(function (sheet) {
+      var s = data.sheets[sheet.key];
+      if (!s) return;
+      restoreFields(sheet, s);
+      sheet.groups.forEach(function (g) {
+        var gs = s.groups && s.groups[g.key];
+        if (!gs) return;
+        // Rebuild rows in the saved order; account IDs absent from the saved
+        // order were removed by the user, so they drop out here.
+        if (Array.isArray(gs.order) && gs.order.length) {
+          var byAcct = {};
+          g.rows.forEach(function (r) { byAcct[rowAcct(r)] = r; });
+          var newRows = gs.order.map(function (id) { return byAcct[id]; }).filter(Boolean);
+          if (newRows.length) g.rows = newRows;
+        }
+        g.rows.forEach(function (r) {
+          var isP = gs.primaryId != null && rowAcct(r) === gs.primaryId;
+          if (gs.primaryId != null) { r.isPrimary = isP; r.classification = isP ? 'Primary' : 'Duplicate'; }
+        });
+        if (typeof gs.action === 'string') g.action = gs.action;
+        g.actionChosen = !!gs.actionChosen;
+        if (typeof gs.remarks === 'string') g.remarks = gs.remarks;
+      });
+    });
+  }
+
+  function restoreFields(sheet, s) {
+    if (!s || !Array.isArray(s.fields)) return;
+    var byId = {};
+    sheet.fields.forEach(function (f) { byId[f.id] = f; });
+    var savedCut = typeof s.displayCount === 'number' ? s.displayCount : s.fields.length;
+    var ordered = [], newDisplay = 0;
+    s.fields.forEach(function (sf, i) {
+      var f = byId[sf.id];
+      if (f && !f._seen) {
+        if (typeof sf.label === 'string' && sf.label) f.label = sf.label;
+        ordered.push(f); f._seen = true;
+        if (i < savedCut) newDisplay++; // count only saved-displayed fields that still exist
+      }
+    });
+    sheet.fields.forEach(function (f) { if (!f._seen) ordered.push(f); }); // new fields keep their place at the end (hidden)
+    ordered.forEach(function (f) { delete f._seen; });
+    if (ordered.length === sheet.fields.length) {
+      sheet.fields = ordered;
+      sheet.displayCount = Math.max(1, Math.min(newDisplay || savedCut, sheet.fields.length));
+    }
+  }
+
+  function clearSavedState() {
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(STORAGE_PREFIX) === 0) keys.push(k);
+      }
+      keys.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* ignore */ }
   }
 
   function renderStats(s) {
@@ -457,6 +599,7 @@
   function closeEdit() {
     // Leaving the group: apply the primary-to-top reorder offscreen.
     RP.reorderPrimaryTop(currentGroup());
+    saveState();
     state.edit.active = false;
     els.editOverlay.hidden = true;
     renderSheet();
@@ -469,12 +612,21 @@
     // Reorder the group we're leaving offscreen, so its rows show the primary
     // on top next time it's viewed — but never while it's on screen.
     RP.reorderPrimaryTop(currentGroup());
+    saveState();
     state.edit.group = next;
     renderEditGroup();
   }
 
+  // An Unclassified group needs both an action and a primary before advancing —
+  // except when the action is "Ignore", which needs no primary (the group is
+  // being set aside, so there's nothing to keep).
+  function unclassifiedComplete(g) {
+    if (!g.actionChosen) return false;
+    if (g.action === 'Ignore') return true;
+    return g.rows.some(function (r) { return r.isPrimary; });
+  }
   function shouldAutoNext(g, sheet) {
-    if (sheet.key === 'unclassified') return g.actionChosen && g.rows.some(function (r) { return r.isPrimary; });
+    if (sheet.key === 'unclassified') return unclassifiedComplete(g);
     return g.actionChosen;
   }
   function scheduleNext() { setTimeout(function () { navGroup(1); }, 200); }
@@ -484,6 +636,9 @@
     g.action = a;
     g.actionChosen = true;
     updateActionButtons();
+    saveState();
+    // Switching to/from Ignore changes whether a primary is still required.
+    if (currentSheet().key === 'unclassified') renderPrimaryName();
     if (shouldAutoNext(g, currentSheet())) scheduleNext();
   }
 
@@ -496,9 +651,18 @@
     // NOTE: rows are intentionally NOT reordered here. Watching rows swap while
     // the group is on screen is jarring; the primary-to-top reorder happens
     // offscreen (navGroup / closeEdit). Export always puts the primary on top.
+    saveState();
     renderEditGroup();
     // Unclassified auto-advances only once both an action and a primary are set.
     if (currentSheet().key === 'unclassified' && shouldAutoNext(g, currentSheet())) scheduleNext();
+  }
+
+  function deleteRecord(idx) {
+    var g = currentGroup();
+    if (g.rows.length <= 2 || idx < 0 || idx >= g.rows.length) return;
+    g.rows.splice(idx, 1);
+    saveState();
+    renderEditGroup();
   }
 
   function updateActionButtons() {
@@ -506,6 +670,24 @@
     Array.prototype.forEach.call(els.actionButtons.children, function (b) {
       b.classList.toggle('active', b.getAttribute('data-action') === action);
     });
+  }
+
+  // Large centered banner: the primary account name, or a prompt. Unclassified
+  // groups marked Ignore need no primary, so we don't nag for one.
+  function renderPrimaryName() {
+    var sheet = currentSheet();
+    var g = currentGroup();
+    var primaryRow = g.rows.filter(function (r) { return r.isPrimary; })[0];
+    if (primaryRow) {
+      els.editPrimaryName.textContent = RP.fieldValue({ src: RP.COL.accountName, kind: 'data' }, g, primaryRow, 1) || '(unnamed account)';
+      els.editPrimaryName.classList.remove('no-primary');
+    } else if (sheet.key === 'unclassified' && g.action === 'Ignore') {
+      els.editPrimaryName.textContent = 'Ignored — no primary needed';
+      els.editPrimaryName.classList.remove('no-primary');
+    } else {
+      els.editPrimaryName.textContent = '⚠ Select a primary account';
+      els.editPrimaryName.classList.add('no-primary');
+    }
   }
 
   function renderEditGroup() {
@@ -516,12 +698,7 @@
     els.editSheet.textContent = 'Editing: ' + sheet.title;
     els.editProgress.textContent = 'Group ' + (idx + 1) + ' of ' + sheet.groups.length;
 
-    // Large centered primary account name.
-    var primaryRow = g.rows.filter(function (r) { return r.isPrimary; })[0];
-    els.editPrimaryName.textContent = primaryRow
-      ? RP.fieldValue({ src: RP.COL.accountName, kind: 'data' }, g, primaryRow, 1) || '(unnamed account)'
-      : '⚠ Select a primary account';
-    els.editPrimaryName.classList.toggle('no-primary', !primaryRow);
+    renderPrimaryName();
 
     // Problematic duplicates: show Notes fragments as big centered tags.
     if (sheet.key === 'attention') {
@@ -537,15 +714,22 @@
     els.editGroupMeta.textContent = 'Stripped domain: ' + (g.key || '(blank)') + ' · ' + g.rows.length + ' account(s)';
 
     // Records table: a Primary radio (replaces Classification) + displayed data
-    // fields (no group-level Action/Notes/Remarks).
+    // fields (no group-level Action/Notes/Remarks). Groups with 3+ records also
+    // get a Remove column so records that don't belong can be dropped.
     var dataCols = RP.displayedFields(sheet).filter(function (f) { return !f.group && f.kind !== 'classification'; });
+    var canDelete = g.rows.length > 2;
     var html = '<tr class="head"><td>Primary</td>' +
-      dataCols.map(function (c) { return '<td>' + esc(c.label) + '</td>'; }).join('') + '</tr>';
+      dataCols.map(function (c) { return '<td>' + esc(c.label) + '</td>'; }).join('') +
+      (canDelete ? '<td class="pv-del-head">Remove</td>' : '') + '</tr>';
     g.rows.forEach(function (row, ri) {
       var radio = '<td class="pv-radio"><input type="radio" name="editPrimary" data-row="' + ri + '"' +
         (row.isPrimary ? ' checked' : '') + ' aria-label="Set as primary" /></td>';
+      var del = canDelete
+        ? '<td class="pv-del"><button type="button" class="row-del" data-row="' + ri +
+          '" aria-label="Remove this record from the group" title="Remove from group">✕</button></td>'
+        : '';
       html += '<tr' + (row.isPrimary ? ' class="primary"' : '') + '>' + radio +
-        dataCols.map(function (c) { return td(c, g, row, ri); }).join('') + '</tr>';
+        dataCols.map(function (c) { return td(c, g, row, ri); }).join('') + del + '</tr>';
     });
     els.editTable.className = 'pv theme-' + sheet.theme.name;
     els.editTable.innerHTML = html;
@@ -581,6 +765,7 @@
     state.cfEditingId = null;
     renderCfLists();
     rerenderActive();
+    saveState();
   });
 
   function cfItemHtml(f) {
@@ -637,6 +822,7 @@
     state.cfEditingId = null;
     renderCfLists();
     rerenderActive();
+    saveState();
   }
 
   // Drag between/within the two lists.
@@ -690,6 +876,7 @@
     }
     renderCfLists();
     rerenderActive();
+    saveState();
   }
 
   // ---- Utilities -----------------------------------------------------------

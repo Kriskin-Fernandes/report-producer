@@ -11,17 +11,75 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Privacy: padlock in the top corner opens a popup -->
-  <button id="lockBtn" class="lock-btn" type="button" aria-label="Privacy information" aria-expanded="false">🔒</button>
-  <div id="privacyPop" class="privacy-pop" role="dialog" aria-label="Privacy" hidden>
-    <button id="privacyClose" class="pop-close" type="button" aria-label="Close">×</button>
+  <!-- Top-right toggles: tutorial (?), storage/cookies, privacy -->
+  <div class="top-toggles">
+    <button id="helpBtn" class="lock-btn" type="button" aria-label="How to use this site" aria-expanded="false">?</button>
+    <button id="cookieBtn" class="lock-btn" type="button" aria-label="Storage and cookie policy" aria-expanded="false">🍪</button>
+    <button id="lockBtn" class="lock-btn" type="button" aria-label="Privacy information" aria-expanded="false">🔒</button>
+  </div>
+
+  <div id="privacyPop" class="info-pop ok-pop" role="dialog" aria-label="Privacy" hidden>
+    <button class="pop-close" type="button" aria-label="Close">×</button>
     <strong>Your data never leaves this page.</strong>
     <p>
-      The CSV is read and the <code>.xlsx</code> report is built entirely in
-      your browser. Nothing is uploaded, stored, logged, or sent to any server —
-      a Content-Security-Policy on this page blocks all outbound connections.
-      You can even save this page and run it offline.
+      The CSVs are read and the <code>.xlsx</code> report is built entirely in
+      your browser. Nothing is uploaded, logged, or sent to any server — a
+      Content-Security-Policy on this page blocks all outbound connections. Your
+      edits are saved only in this browser (see 🍪). You can even save this page
+      and run it offline.
     </p>
+  </div>
+
+  <div id="cookiePop" class="info-pop" role="dialog" aria-label="Storage and cookies" hidden>
+    <button class="pop-close" type="button" aria-label="Close">×</button>
+    <strong>Storage &amp; cookies</strong>
+    <p>
+      This site sets <strong>no tracking cookies</strong> and sends nothing to
+      any server. To remember your work, it uses your browser's own
+      <strong>local storage</strong> (which — unlike cookies — is never
+      transmitted anywhere).
+    </p>
+    <p>
+      When you edit a report, your actions, primary choices, removed records and
+      column setup are saved locally, keyed to the uploaded file. Re-upload the
+      same file after a reload and your changes come back. It stays on this
+      device until you clear it.
+    </p>
+    <button id="cookieClear" class="btn" type="button">Clear saved edits</button>
+    <span id="cookieCleared" class="cookie-cleared" hidden>Cleared ✓</span>
+  </div>
+
+  <div id="helpPop" class="info-pop help-pop" role="dialog" aria-label="How to use this site" hidden>
+    <button class="pop-close" type="button" aria-label="Close">×</button>
+    <strong>How to use this site</strong>
+    <ol class="help-list">
+      <li><strong>Upload the export CSV</strong> (left). First row = headings,
+        records below. The report builds instantly, in your browser.</li>
+      <li><strong>Read the dashboard</strong> — group counts and records read,
+        plus any data warnings.</li>
+      <li><strong>Browse the three tabs</strong> — Likely duplicates,
+        Problematic duplicates, Unclassified. Records are grouped by domain; the
+        <em>primary</em> is the bold top row. <strong>Account ID</strong> links
+        to Salesforce.</li>
+      <li><strong>Add an Opportunities CSV</strong> (right, optional) to get an
+        <em>Opportunities</em> column — a bubble with the count and how long ago
+        the newest one changed; click it for the full list.</li>
+      <li><strong>👁 eye button</strong> on any row opens that group in Edit
+        actions.</li>
+      <li><strong>⚙ Customize data</strong> — drag fields between
+        <em>Displayed</em> and <em>Hidden</em>, reorder them, rename with the
+        pencil (✎), or revert names. This drives the view and the download.</li>
+      <li><strong>✎ Edit actions</strong> — step through groups: pick the
+        primary (radio), choose Merge / Ignore / Evaluate / None, add remarks,
+        and (for groups with 3+ records) remove records that don't belong.
+        Unclassified needs both an action and a primary — except
+        <em>Ignore</em>, which needs no primary. Move with ← / →, finish with
+        Esc.</li>
+      <li><strong>⬇ Download (.xlsx)</strong> — a formatted workbook with all
+        your choices baked in.</li>
+    </ol>
+    <p class="muted">Your edits are remembered on this device (see 🍪) and come
+      back when you re-upload the same file.</p>
   </div>
 
   <main class="wrap">
@@ -41,43 +99,52 @@
           </div>
         </div>
         <p id="fileName" class="file-name" hidden></p>
-        <div class="opps-row">
-          <input id="oppsInput" type="file" accept=".csv,text/csv" hidden />
-          <button id="oppsBtn" class="btn opps-btn" type="button">＋ Add Opportunities CSV (optional)</button>
-          <button id="oppsClear" class="btn opps-clear" type="button" hidden>Remove</button>
-          <p id="oppsName" class="file-name" hidden></p>
-        </div>
         <p id="errorBox" class="error" role="alert" hidden></p>
       </section>
 
-      <section class="card dash-card" id="dashCard" hidden>
-        <div class="results-head">
-          <h2>Report</h2>
-          <button id="downloadBtn" class="btn primary" type="button">⬇ Download (.xlsx)</button>
+      <section class="card upload-card">
+        <h2>Opportunities CSV <span class="opt-tag">optional</span></h2>
+        <div id="oppsDropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload Opportunities CSV. Click or drag and drop.">
+          <input id="oppsInput" type="file" accept=".csv,text/csv" hidden />
+          <div class="dz-inner">
+            <div class="dz-icon" aria-hidden="true">⬆</div>
+            <div class="dz-text"><strong>Click to choose the Opportunities CSV</strong> or drag &amp; drop it here</div>
+            <div class="dz-hint">Links opportunities to accounts by Account ID.</div>
+          </div>
         </div>
-        <div id="stats" class="stats" aria-label="Report summary"></div>
-        <div id="warnings" class="warnings" hidden>
-          <h3>Heads up</h3>
-          <ul id="warningList"></ul>
-        </div>
+        <p id="oppsName" class="file-name" hidden></p>
+        <button id="oppsClear" class="btn opps-clear" type="button" hidden>Remove opportunities</button>
       </section>
     </div>
 
-    <section class="card viewer-card" id="viewer" hidden>
-      <div class="viewer-head">
-        <div class="tabs" id="sheetTabs" role="tablist" aria-label="Sheets"></div>
-        <div class="viewer-actions">
-          <button id="customizeBtn" class="btn" type="button">⚙ Customize data</button>
-          <button id="editBtn" class="btn" type="button">✎ Edit actions</button>
-        </div>
+    <section class="card dash-card" id="dashCard" hidden>
+      <div class="results-head">
+        <h2>Report</h2>
+        <button id="downloadBtn" class="btn primary" type="button">⬇ Download (.xlsx)</button>
       </div>
-      <div class="table-scroll"><table id="sheetTable" class="pv"></table></div>
+      <div id="stats" class="stats" aria-label="Report summary"></div>
+      <div id="warnings" class="warnings" hidden>
+        <h3>Heads up</h3>
+        <ul id="warningList"></ul>
+      </div>
     </section>
-
-    <footer class="page-foot">
-      <p>All processing is local. Built as a static site for GitHub Pages.</p>
-    </footer>
   </main>
+
+  <!-- Full-width report viewer (buttons stay put; only the table scrolls) -->
+  <section class="card viewer-card" id="viewer" hidden>
+    <div class="viewer-head">
+      <div class="tabs" id="sheetTabs" role="tablist" aria-label="Sheets"></div>
+      <div class="viewer-actions">
+        <button id="customizeBtn" class="btn" type="button">⚙ Customize data</button>
+        <button id="editBtn" class="btn" type="button">✎ Edit actions</button>
+      </div>
+    </div>
+    <div class="table-scroll"><table id="sheetTable" class="pv"></table></div>
+  </section>
+
+  <footer class="page-foot">
+    <p>All processing is local. Built as a static site for GitHub Pages.</p>
+  </footer>
 
   <!-- Full-screen edit-actions mode -->
   <div id="editOverlay" class="edit-overlay" role="dialog" aria-label="Edit actions" hidden>

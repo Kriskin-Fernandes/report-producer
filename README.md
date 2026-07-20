@@ -5,11 +5,12 @@ export (CSV) into a formatted **Excel (`.xlsx`) workbook**. Built to be hosted
 on **GitHub Pages**.
 
 > **Privacy:** the uploaded file is read and the workbook is built entirely in
-> your browser. Nothing is uploaded, stored, logged, or transmitted. The page
-> ships a Content-Security-Policy with `connect-src 'none'`, so the browser
-> itself blocks any outbound request. There are **no third-party scripts or
-> CDNs** — even the `.xlsx` writer is hand-rolled — so you can save the page
-> and run it offline.
+> your browser. Nothing is uploaded, logged, or transmitted. The page ships a
+> Content-Security-Policy with `connect-src 'none'`, so the browser itself
+> blocks any outbound request. There are **no third-party scripts or CDNs** —
+> even the `.xlsx` writer is hand-rolled — so you can save the page and run it
+> offline. Your in-app edits are saved only in this browser's **local storage**
+> (never sent anywhere — see *Saved edits* below).
 
 ---
 
@@ -34,8 +35,12 @@ customizable (see below).
 
 ## Using the app
 
-- A **padlock** button (top-right) opens the privacy notice.
-- The **Upload** and **Report** (summary + download) cards sit side by side.
+- Three **top-right buttons** open popups: **?** (a full how-to tutorial),
+  **🍪** (storage & cookie policy), and **🔒** (privacy notice).
+- The **export CSV** and the optional **Opportunities CSV** have two equal
+  upload areas side by side; the **Report** (summary + download) sits below.
+- The report table uses the **full screen width**; while you scroll it the
+  tab/Customize/Edit buttons stay put — only the rows scroll.
 - A **tab selector** switches between full views of each sheet.
 - **Account ID** is a clickable link to the account in Salesforce
   (`https://checkout.my.salesforce.com/<id>`), on screen and in the `.xlsx`.
@@ -56,10 +61,12 @@ customizable (see below).
   is primary; four big buttons (Merge / Ignore / Evaluate / None) assign the
   group's action; and a **Remarks** field adds a note. Choosing an action
   auto-advances to the next group (Unclassified only advances once **both** an
-  action and a primary are chosen). On Problematic duplicates the flagged
-  reasons appear as large tags. Use **← / →** to move between groups, **Esc** to
-  finish. Actions, remarks and primary changes are written into the workbook on
-  download.
+  action and a primary are chosen — **except Ignore**, which needs no primary).
+  Groups with **3+ records** show a **Remove (✕)** button per record so records
+  that don't belong can be dropped from the group (and from the report). On
+  Problematic duplicates the flagged reasons appear as large tags. Use
+  **← / →** to move between groups, **Esc** to finish. Actions, remarks,
+  removals and primary changes are written into the workbook on download.
   - Changing the primary **does not** re-shuffle the rows while you are looking
     at the group (watching rows jump around is jarring). The primary is moved to
     the top **offscreen** — the next time you open that group, and in the
@@ -88,6 +95,20 @@ Opportunities columns (read by position):
 | Account ID (links to the account) | F | 5 |
 | Stage | N | 13 |
 | Last modified date (MM/DD/YYYY) | X | 23 |
+
+## Saved edits (local storage, not cookies)
+
+Your work is remembered so an accidental reload doesn't lose it. When you edit
+a report — actions, primary choices, removed records, and the Customize-data
+layout (field order, shown/hidden, renames) — the state is written to the
+browser's **local storage**, keyed to a fingerprint of the uploaded CSV.
+Re-upload the **same file** after a reload and your changes are restored.
+
+This uses local storage, **not cookies**: unlike cookies, local storage is
+never attached to any request, so nothing is transmitted (the CSP blocks
+outbound requests regardless). It stays on the device until cleared — the
+**🍪** popup has a **Clear saved edits** button, or clear site data in your
+browser.
 
 ## Formatting applied
 
