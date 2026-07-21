@@ -41,7 +41,7 @@
     gray: { name: 'gray', headerFill: 'E6E6E6' }
   };
 
-  var ACTION_OPTIONS = ['None', 'Merge', 'Evaluate', 'Ignore'];
+  var ACTION_OPTIONS = ['None', 'Merge', 'Evaluate', 'Close'];
   var SALESFORCE_BASE = 'https://checkout.my.salesforce.com/';
 
   // ---- Field descriptors ----------------------------------------------------

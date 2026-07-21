@@ -62,10 +62,11 @@ customizable (see below).
 - **Edit actions** (all sheets) opens a full-screen mode that steps through the
   groups one at a time. The **primary account name** is the large title; the
   group's accounts are listed with a **Primary radio** to change which account
-  is primary; four big buttons (Merge / Ignore / Evaluate / None) assign the
+  is primary; four big buttons (Merge / Close / Evaluate / None) assign the
   group's action; and a **Remarks** field adds a note. Choosing an action
-  auto-advances to the next group (Unclassified only advances once **both** an
-  action and a primary are chosen — **except Ignore**, which needs no primary).
+  auto-advances to the next group (Unclassified advances once an action is
+  chosen, and a primary is required **only for Merge** — Close / Evaluate /
+  None need no primary).
   Groups with **3+ records** show a **Remove (✕)** button per record so records
   that don't belong can be dropped from the group (and from the report). On
   Problematic duplicates the flagged reasons appear as large tags. Use
@@ -125,7 +126,7 @@ browser.
 - **Borders**: full grid on the header block, a box around each group, and vertical rules between every column (blank row between groups).
 - **Account ID** cells are a Salesforce `HYPERLINK` (blue, underlined, monospaced).
 - **Notes / Remarks** columns never wrap — each is widened to fit its longest value.
-- **Action** is one value **per group**, written on the group's top (primary) row with a real Excel dropdown (`None`, `Merge`, `Evaluate`, `Ignore`); duplicate rows are left blank.
+- **Action** is one value **per group**, written on the group's top (primary) row with a real Excel dropdown (`None`, `Merge`, `Evaluate`, `Close`); duplicate rows are left blank.
 - **Remarks** (from edit mode) are written on the group's top row, in the added Remarks column.
 - Top three rows are frozen so headers stay visible while scrolling.
 

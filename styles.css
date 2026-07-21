@@ -244,7 +244,7 @@ html, body {
 
 /* Per-record edit (eye) column in the sheet view */
 .pv .pv-eye, .pv .pv-eye-head { text-align: center; width: 1%; white-space: nowrap; }
-.row-edit { border: none; background: transparent; cursor: pointer; font-size: 1rem; line-height: 1; padding: 3px 7px; border-radius: 7px; opacity: .55; }
+.row-edit { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 1rem; line-height: 1; padding: 3px 7px; border-radius: 7px; opacity: .55; }
 .row-edit:hover { opacity: 1; background: #eff6ff; }
 
 /* Per-record delete (×) column in edit-actions (only when a group has 3+ rows) */

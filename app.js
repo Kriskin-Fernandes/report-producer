@@ -15,7 +15,7 @@
   var SF = RP.SALESFORCE_BASE;
 
   var $ = function (id) { return document.getElementById(id); };
-  var ACTION_ORDER = ['Merge', 'Ignore', 'Evaluate', 'None'];
+  var ACTION_ORDER = ['Merge', 'Close', 'Evaluate', 'None'];
 
   var els = {
     fileInput: $('fileInput'), dropzone: $('dropzone'), fileName: $('fileName'), errorBox: $('errorBox'),
@@ -658,12 +658,13 @@
     renderEditGroup();
   }
 
-  // An Unclassified group needs both an action and a primary before advancing —
-  // except when the action is "Ignore", which needs no primary (the group is
-  // being set aside, so there's nothing to keep).
+  // An Unclassified group needs an action before advancing, and a primary only
+  // when the action is "Merge" (that's the one that keeps a surviving record).
+  // Close / Evaluate / None set the group aside or defer it, so a missing
+  // primary is fine for those.
   function unclassifiedComplete(g) {
     if (!g.actionChosen) return false;
-    if (g.action === 'Ignore') return true;
+    if (g.action !== 'Merge') return true;
     return g.rows.some(function (r) { return r.isPrimary; });
   }
   function shouldAutoNext(g, sheet) {
@@ -678,7 +679,7 @@
     g.actionChosen = true;
     updateActionButtons();
     saveState();
-    // Switching to/from Ignore changes whether a primary is still required.
+    // Switching between actions changes whether a primary is still required.
     if (currentSheet().key === 'unclassified') renderPrimaryName();
     if (shouldAutoNext(g, currentSheet())) scheduleNext();
   }
@@ -714,7 +715,8 @@
   }
 
   // Large centered banner: the primary account name, or a prompt. Unclassified
-  // groups marked Ignore need no primary, so we don't nag for one.
+  // groups only need a primary when the action is "Merge", so for any other
+  // chosen action we don't nag for one.
   function renderPrimaryName() {
     var sheet = currentSheet();
     var g = currentGroup();
@@ -722,8 +724,8 @@
     if (primaryRow) {
       els.editPrimaryName.textContent = RP.fieldValue({ src: RP.COL.accountName, kind: 'data' }, g, primaryRow, 1) || '(unnamed account)';
       els.editPrimaryName.classList.remove('no-primary');
-    } else if (sheet.key === 'unclassified' && g.action === 'Ignore') {
-      els.editPrimaryName.textContent = 'Ignored — no primary needed';
+    } else if (sheet.key === 'unclassified' && g.actionChosen && g.action !== 'Merge') {
+      els.editPrimaryName.textContent = 'No primary needed';
       els.editPrimaryName.classList.remove('no-primary');
     } else {
       els.editPrimaryName.textContent = '⚠ Select a primary account';
