@@ -68,7 +68,9 @@ customizable (see below).
   groups one at a time. The **primary account name** is the large title; the
   group's accounts are listed with a **Primary radio** to change which account
   is primary; four big buttons (Merge / Close / Evaluate / None) assign the
-  group's action; and a **Remarks** field adds a note. Choosing an action
+  group's action (the four buttons are **colour-coded** — Merge green, Close
+  red, Evaluate yellow, None blue — filled when selected, outlined otherwise);
+  and a **Remarks** field adds a note. Choosing an action
   auto-advances to the next group (Unclassified advances once an action is
   chosen, and a primary is required **only for Merge** — Close / Evaluate /
   None need no primary).
@@ -131,10 +133,12 @@ partitioned into five tables by their assigned action + remarks:
   that column has **any value**, and **`-`** matches groups where the column is
   **empty**.
 - **People tags** (per-group column): click the cell to assign, create, or
-  remove tags. New tags join a global pool. **🏷 Tag all shown** adds the same
-  tags to every group currently shown (after search/filter).
-- **Next steps** (per-group column): a dropdown of **None / Contact / Follow up
-  / Done**. **Next step for all** sets it on every group currently shown.
+  remove tags. New tags join a global pool. Each tag gets its **own colour**.
+  **🏷 Tag all shown** adds the same tags to every group currently shown (after
+  search/filter).
+- **Next steps** (per-group column): a **colour-coded** dropdown — grey
+  **None**, orange **Contact**, yellow **Follow up**, green **Done**. **Next
+  step for all** sets it on every group currently shown.
 - **Filter tags:** each tag chip is **tri-state** — click to cycle
   **include → exclude → off**. *Include* real tags matches groups whose tag set
   is **exactly** those tags; adding the **Any** wildcard chip switches to

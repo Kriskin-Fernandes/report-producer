@@ -52,6 +52,24 @@
   var NEXT_STEPS = ['None', 'Contact', 'Follow up', 'Done'];
   var ANY_TAG = 'Any'; // filter-only wildcard (never a real assignable tag)
 
+  // Colour helpers (classes live in styles.css; the strict CSP forbids inline
+  // styles, so per-item colour is expressed as a class).
+  var TAG_PALETTE = 12; // number of tag-cN colour classes
+  function nsClass(v) {
+    return v === 'Done' ? 'ns-done' : v === 'Contact' ? 'ns-contact'
+      : v === 'Follow up' ? 'ns-followup' : 'ns-none';
+  }
+  function actClass(a) {
+    return a === 'Merge' ? 'act-merge' : a === 'Close' ? 'act-close'
+      : a === 'Evaluate' ? 'act-evaluate' : 'act-none';
+  }
+  // Deterministic colour per tag name → one of the tag-cN palette classes.
+  function tagColorClass(t) {
+    var s = String(t), h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return 'tag-c' + (h % TAG_PALETTE);
+  }
+
   var state = {
     result: null,
     activeSheet: 0,          // 0..N-1 = sheets; N = the Review tab
@@ -924,11 +942,11 @@
       if (ri === 0) {
         var tags = g.peopleTags || [];
         var tagLabel = tags.length
-          ? tags.map(function (t) { return '<span class="tag-pill">' + esc(t) + '</span>'; }).join(' ')
+          ? tags.map(function (t) { return '<span class="tag-pill ' + tagColorClass(t) + '">' + esc(t) + '</span>'; }).join(' ')
           : '<span class="tag-add-hint">＋ Add tags</span>';
         tagCell = '<td class="rv-tags"><button type="button" class="tag-btn" data-uid="' + esc(g.uid) +
           '" title="Assign people tags">' + tagLabel + '</button></td>';
-        nextCell = '<td class="rv-next"><select class="next-step" data-uid="' + esc(g.uid) + '" aria-label="Next step">' +
+        nextCell = '<td class="rv-next"><select class="next-step ' + nsClass(g.nextStep || 'None') + '" data-uid="' + esc(g.uid) + '" aria-label="Next step">' +
           NEXT_STEPS.map(function (s) {
             return '<option value="' + esc(s) + '"' + ((g.nextStep || 'None') === s ? ' selected' : '') + '>' + esc(s) + '</option>';
           }).join('') + '</select></td>';
@@ -1090,7 +1108,9 @@
   els.reviewResults.addEventListener('change', function (e) {
     var sel = e.target.closest('.next-step'); if (!sel) return;
     var f = findByUid(sel.getAttribute('data-uid')); if (!f) return;
-    f.g.nextStep = sel.value; saveState();
+    f.g.nextStep = sel.value;
+    sel.className = 'next-step ' + nsClass(sel.value); // recolour to match
+    saveState();
   });
 
   // ---- Review: people-tags popup -------------------------------------------
@@ -1123,7 +1143,7 @@
       var tags = g.peopleTags || [];
       els.tagCurrent.innerHTML = tags.length
         ? tags.map(function (t) {
-            return '<span class="tag-pill removable" data-rm="' + esc(t) + '">' + esc(t) +
+            return '<span class="tag-pill removable ' + tagColorClass(t) + '" data-rm="' + esc(t) + '">' + esc(t) +
               '<button type="button" class="tag-rm" data-rm="' + esc(t) + '" aria-label="Remove ' + esc(t) + '">×</button></span>';
           }).join(' ')
         : '<span class="muted">No tags yet.</span>';
@@ -1374,7 +1394,7 @@
     els.remarksInput.value = g.remarks || '';
 
     els.actionButtons.innerHTML = ACTION_ORDER.map(function (a) {
-      return '<button type="button" class="action-btn" data-action="' + a + '">' + esc(a) + '</button>';
+      return '<button type="button" class="action-btn ' + actClass(a) + '" data-action="' + a + '">' + esc(a) + '</button>';
     }).join('');
     updateActionButtons();
 

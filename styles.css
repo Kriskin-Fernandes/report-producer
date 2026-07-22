@@ -402,3 +402,44 @@ html, body {
 .dark .tag-rm { color: #c7d2fe; }
 .dark .review-table.pv .head td { background: #1e293b; color: var(--ink); }
 .dark .review-table.pv td { background: transparent; }
+
+/* ---- Semantic colours (defined last so they win in light & dark) -------- */
+/* Next steps dropdown: grey None / orange Contact / yellow Follow up / green Done */
+.next-step.ns-none { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+.next-step.ns-contact { background: #ffedd5; border-color: #fb923c; color: #c2410c; }
+.next-step.ns-followup { background: #fef9c3; border-color: #eab308; color: #a16207; }
+.next-step.ns-done { background: #dcfce7; border-color: #4ade80; color: #15803d; }
+
+/* Edit-actions buttons: outline+text = colour when idle, filled when selected.
+   Merge green · Close red · Evaluate yellow · None blue. */
+.action-btn.act-merge { border-color: #16a34a; color: #16a34a; }
+.action-btn.act-close { border-color: #dc2626; color: #dc2626; }
+.action-btn.act-evaluate { border-color: #ca8a04; color: #a16207; }
+.action-btn.act-none { border-color: #2563eb; color: #2563eb; }
+.action-btn.act-merge:hover:not(.active) { background: #f0fdf4; }
+.action-btn.act-close:hover:not(.active) { background: #fef2f2; }
+.action-btn.act-evaluate:hover:not(.active) { background: #fefce8; }
+.action-btn.act-none:hover:not(.active) { background: #eff6ff; }
+.action-btn.act-merge.active { background: #16a34a; border-color: #16a34a; color: #fff; box-shadow: 0 8px 24px rgba(22, 163, 74, .35); }
+.action-btn.act-close.active { background: #dc2626; border-color: #dc2626; color: #fff; box-shadow: 0 8px 24px rgba(220, 38, 38, .35); }
+.action-btn.act-evaluate.active { background: #eab308; border-color: #eab308; color: #422006; box-shadow: 0 8px 24px rgba(234, 179, 8, .35); }
+.action-btn.act-none.active { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 8px 24px rgba(37, 99, 235, .35); }
+.dark .action-btn.act-merge:hover:not(.active) { background: #10241a; }
+.dark .action-btn.act-close:hover:not(.active) { background: #2a1414; }
+.dark .action-btn.act-evaluate:hover:not(.active) { background: #241f0c; }
+.dark .action-btn.act-none:hover:not(.active) { background: #16233c; }
+
+/* People-tag pills: a distinct colour per tag (hashed to one of these). */
+.tag-pill.tag-c0 { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.tag-pill.tag-c1 { background: #dcfce7; color: #166534; border-color: #86efac; }
+.tag-pill.tag-c2 { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.tag-pill.tag-c3 { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.tag-pill.tag-c4 { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+.tag-pill.tag-c5 { background: #cffafe; color: #155e75; border-color: #67e8f9; }
+.tag-pill.tag-c6 { background: #ffe4e6; color: #9f1239; border-color: #fda4af; }
+.tag-pill.tag-c7 { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.tag-pill.tag-c8 { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.tag-pill.tag-c9 { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+.tag-pill.tag-c10 { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+.tag-pill.tag-c11 { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
+.tag-pill.removable .tag-rm { color: inherit; }
