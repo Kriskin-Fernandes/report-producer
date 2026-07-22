@@ -127,23 +127,30 @@ partitioned into five tables by their assigned action + remarks:
 - **Customize data** applies to the Review columns too (its own preset list).
 - **Per-column search:** a search box for every column returns all **groups**
   where the text appears in any row of that column (case-insensitive; multiple
-  column searches combine).
+  column searches combine). Two special tokens: **`*`** matches any group where
+  that column has **any value**, and **`-`** matches groups where the column is
+  **empty**.
 - **People tags** (per-group column): click the cell to assign, create, or
   remove tags. New tags join a global pool. **🏷 Tag all shown** adds the same
   tags to every group currently shown (after search/filter).
 - **Next steps** (per-group column): a dropdown of **None / Contact / Follow up
   / Done**. **Next step for all** sets it on every group currently shown.
-- **Filter tags:** click tag chips to filter. Selecting real tags matches
-  groups whose tag set is **exactly** those tags; adding the **Any** wildcard
-  chip switches to **includes** (superset) matching — e.g. `Alex` returns
-  groups tagged only `Alex`, while `Alex` + `Any` returns every group that
-  includes `Alex`.
+- **Filter tags:** each tag chip is **tri-state** — click to cycle
+  **include → exclude → off**. *Include* real tags matches groups whose tag set
+  is **exactly** those tags; adding the **Any** wildcard chip switches to
+  **includes** (superset) matching — e.g. `Alex` returns groups tagged only
+  `Alex`, while `Alex` + `Any` returns every group that includes `Alex`.
+  *Exclude* (shown in red, second click) drops any group that carries that tag,
+  so you can return the groups that **don't** have the excluded tags.
 - **Copy for email:** each table has a **⧉ Copy** button, and **⧉ Copy
   results** copies everything currently shown. The clipboard gets a compact,
   email-ready HTML table (plus a plain-text fallback) using your customized
   columns, and **excludes** the People tags / Next steps columns.
 
-Review edits (tags, next steps, table selection, column presets) are saved
+The results **fill the page** — there's nothing below them, so the tables grow
+as tall as they need and the page itself scrolls (no fixed inner scroll box).
+
+Review edits (tags, next steps, section selection, column presets) are saved
 locally like the rest of your work.
 
 ## Saved edits (local storage, not cookies)

@@ -66,7 +66,8 @@
     reviewSheet: null,       // the review field universe (result.review)
     reviewInclude: null,     // [bool x5] which partition tables are shown
     reviewSearch: {},        // fieldId -> search text
-    tagFilter: {},           // tagName -> true (plus ANY_TAG)
+    tagFilter: {},           // tagName -> true (include; plus ANY_TAG)
+    tagExclude: {},          // tagName -> true (exclude)
     tagPool: [],             // global pool of people-tag names
     tagTarget: null,         // group being tag-edited, or '*' for bulk-apply
     tagBulkPick: null        // Set of tags chosen in bulk mode
@@ -276,6 +277,7 @@
     state.reviewInclude = state.result.sheets.map(function () { return true; });
     state.reviewSearch = {};
     state.tagFilter = {};
+    state.tagExclude = {};
     state.tagPool = [];
     eachGroup(function (g, si) {
       g.uid = state.result.sheets[si].key + ':' + g.key;
@@ -697,6 +699,7 @@
     if (isReviewActive()) {
       els.sheetScroll.hidden = true;
       els.reviewView.hidden = false;
+      els.viewer.classList.add('review-mode'); // results flow down the whole page
       els.editBtn.hidden = true;
       els.customizeBtn.hidden = false;
       renderReview();
@@ -704,6 +707,7 @@
     }
     els.reviewView.hidden = true;
     els.sheetScroll.hidden = false;
+    els.viewer.classList.remove('review-mode');
     els.customizeBtn.hidden = false;
     var sheet = state.result.sheets[i];
     els.editBtn.hidden = !sheet.editable;
@@ -791,26 +795,50 @@
     }
     return false;
   }
+  // Does the column hold any value for this group (across all its rows)?
+  function columnHasValue(g, f) {
+    for (var i = 0; i < g.rows.length; i++) {
+      var v = RP.fieldValue(f, g, g.rows[i], i);
+      if (v != null && String(v).trim() !== '') return true;
+    }
+    return false;
+  }
   function matchesSearch(g) {
     var fields = reviewDataFields();
     for (var fid in state.reviewSearch) {
       if (!Object.prototype.hasOwnProperty.call(state.reviewSearch, fid)) continue;
-      var text = (state.reviewSearch[fid] || '').trim().toLowerCase();
-      if (!text) continue;
+      var raw = (state.reviewSearch[fid] || '').trim();
+      if (!raw) continue;
       var f = fields.filter(function (x) { return x.id === fid; })[0];
       if (!f) continue; // column no longer displayed → ignore its filter
-      if (!groupMatchesColumn(g, f, text)) return false;
+      // Special tokens: "*" = any non-empty value, "-" = only empty. (The
+      // leading backslash form is accepted too, since some editors escape them.)
+      if (raw === '*' || raw === '\\*') { if (!columnHasValue(g, f)) return false; continue; }
+      if (raw === '-' || raw === '\\-') { if (columnHasValue(g, f)) return false; continue; }
+      if (!groupMatchesColumn(g, f, raw.toLowerCase())) return false;
     }
     return true;
   }
   function matchesTagFilter(g) {
+    var tags = g.peopleTags || [];
+    // Exclusions: drop any group that carries an excluded tag.
+    for (var ex in state.tagExclude) {
+      if (state.tagExclude[ex] && tags.indexOf(ex) >= 0) return false;
+    }
     var sel = Object.keys(state.tagFilter).filter(function (k) { return state.tagFilter[k]; });
     var any = sel.indexOf(ANY_TAG) >= 0;
     var real = sel.filter(function (t) { return t !== ANY_TAG; });
     if (!real.length) return true; // nothing (or "Any" alone) selected → all groups
-    var tags = g.peopleTags || [];
     for (var i = 0; i < real.length; i++) { if (tags.indexOf(real[i]) < 0) return false; }
     return any ? true : tags.length === real.length; // Any = superset; else exact set
+  }
+  // Tag chips cycle off → include → exclude → off (the "Any" wildcard only
+  // toggles include, since excluding "any tag" is meaningless).
+  function cycleTagFilter(tag) {
+    if (tag === ANY_TAG) { state.tagFilter[tag] = !state.tagFilter[tag]; return; }
+    if (state.tagFilter[tag]) { state.tagFilter[tag] = false; state.tagExclude[tag] = true; }
+    else if (state.tagExclude[tag]) { state.tagExclude[tag] = false; }
+    else { state.tagFilter[tag] = true; }
   }
   // A group is on screen when its report section is included and it passes the
   // column search + tag filter. This is the target of "apply to all shown" and
@@ -849,10 +877,15 @@
 
     var filterTags = [ANY_TAG].concat(state.tagPool);
     var tfHtml = filterTags.map(function (t) {
-      var on = !!state.tagFilter[t];
-      return '<button type="button" class="rv-chip rv-tf' + (on ? ' active' : '') + (t === ANY_TAG ? ' rv-any' : '') +
-        '" data-tf="' + esc(t) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(t) + '</button>';
+      var inc = !!state.tagFilter[t];
+      var exc = !!state.tagExclude[t];
+      var cls = 'rv-chip rv-tf' + (t === ANY_TAG ? ' rv-any' : '') + (inc ? ' active' : '') + (exc ? ' rv-ex' : '');
+      var pressed = inc ? 'true' : (exc ? 'mixed' : 'false');
+      return '<button type="button" class="' + cls + '" data-tf="' + esc(t) + '" aria-pressed="' + pressed +
+        '">' + (exc ? '✕ ' : '') + esc(t) + '</button>';
     }).join('');
+    // Non-"Any" chips cycle include → exclude → off, so add a hint.
+    var tfHint = state.tagPool.length ? '<span class="rv-hint">click a tag: include → exclude → off</span>' : '';
 
     var nextHtml = '<select id="rvNextAll" class="rv-select" aria-label="Set next step for all shown groups">' +
       '<option value="">Next step for all…</option>' +
@@ -861,7 +894,7 @@
 
     els.reviewToolbar.innerHTML =
       '<div class="rv-block"><span class="rv-block-label">Sections</span><div class="rv-chips">' + incHtml + '</div></div>' +
-      '<div class="rv-block"><span class="rv-block-label">Filter tags</span><div class="rv-chips">' + tfHtml + '</div></div>' +
+      '<div class="rv-block"><span class="rv-block-label">Filter tags</span><div class="rv-chips">' + tfHtml + '</div>' + tfHint + '</div>' +
       '<div class="rv-block"><span class="rv-block-label">Apply to all shown</span><div class="rv-chips">' +
         '<button type="button" id="rvTagAll" class="btn">🏷 Tag all shown…</button>' + nextHtml +
       '</div></div>';
@@ -869,7 +902,8 @@
 
   function renderReviewSearchRow() {
     var fields = reviewDataFields();
-    els.reviewSearch.innerHTML = '<span class="rv-block-label">Search columns</span>' +
+    els.reviewSearch.innerHTML = '<span class="rv-block-label">Search columns ' +
+      '<span class="rv-hint">— <code>*</code> = any value, <code>-</code> = empty</span></span>' +
       '<div class="rv-search-grid">' + fields.map(function (f) {
         return '<label class="rv-search-col"><span>' + esc(f.label) + '</span>' +
           '<input type="search" class="rv-search-input" data-fid="' + esc(f.id) + '" value="' +
@@ -1031,7 +1065,7 @@
     var inc = e.target.closest('.rv-inc');
     if (inc) { var i = parseInt(inc.getAttribute('data-inc'), 10); state.reviewInclude[i] = !state.reviewInclude[i]; saveState(); renderReview(); return; }
     var tf = e.target.closest('.rv-tf');
-    if (tf) { var t = tf.getAttribute('data-tf'); state.tagFilter[t] = !state.tagFilter[t]; renderReview(); return; }
+    if (tf) { cycleTagFilter(tf.getAttribute('data-tf')); renderReview(); return; }
     if (e.target.closest('#rvTagAll')) { openTagPopup('*'); return; }
   });
   els.reviewToolbar.addEventListener('change', function (e) {

@@ -267,6 +267,12 @@ html, body {
 .review-toolbar, .review-search { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .review-results { flex: 1 1 auto; min-height: 0; overflow: auto; }
 
+/* In Review the results fill the whole page (no fixed inner scroll window) —
+   there is nothing below them, so they grow as tall as they need and the page
+   itself scrolls. */
+.viewer-card.review-mode { max-height: none; }
+.viewer-card.review-mode .review-results { overflow: visible; min-height: 0; }
+
 .rv-block { display: flex; flex-direction: column; gap: 6px; }
 .rv-block-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
 .rv-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -275,6 +281,10 @@ html, body {
 .rv-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
 .rv-chip.rv-any { border-style: dashed; }
 .rv-chip.rv-any.active { background: #6d28d9; border-color: #6d28d9; }
+.rv-chip.rv-ex { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+.rv-chip.rv-ex:hover { border-color: #b91c1c; color: #b91c1c; }
+.rv-hint { font-size: .72rem; color: var(--muted); }
+.rv-hint code { background: rgba(37, 99, 235, .1); padding: 0 4px; border-radius: 4px; }
 .rv-select { border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 10px; border-radius: 10px; font-size: .82rem; font-weight: 600; cursor: pointer; }
 
 .review-search { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; flex-direction: column; gap: 8px; }
@@ -384,6 +394,7 @@ html, body {
 .dark .cf-preset, .dark .rv-chip { background: #1e293b; color: var(--ink-soft); border-color: var(--line); }
 .dark .cf-preset.active, .dark .rv-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
 .dark .rv-chip.rv-any.active { background: #7c3aed; border-color: #7c3aed; }
+.dark .rv-chip.rv-ex { background: #3f1d1d; border-color: #7f1d1d; color: #fecaca; }
 .dark .rv-select, .dark .next-step, .dark .rv-search-input, .dark .tag-add input { background: #0f172a; color: var(--ink); border-color: var(--line); }
 .dark .review-search { background: #0f172a; border-color: var(--line); }
 .dark .tag-btn { color: var(--ink-soft); border-color: var(--line); }
