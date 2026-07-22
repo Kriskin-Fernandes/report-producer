@@ -132,7 +132,7 @@ html, body {
   max-height: calc(100vh - 24px);
 }
 .viewer-card .viewer-head { flex: 0 0 auto; }
-.viewer-card .table-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.viewer-card > #sheetScroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 
 .viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .tabs { display: inline-flex; background: #f1f5f9; border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
@@ -252,6 +252,65 @@ html, body {
 .row-del { border: none; background: transparent; cursor: pointer; color: #b91c1c; font-size: 1.15rem; line-height: 1; padding: 2px 9px; border-radius: 7px; opacity: .6; }
 .row-del:hover { opacity: 1; background: #fef2f2; }
 
+/* Undo-remove button (edit-actions) */
+.edit-undo { margin-top: 10px; font-size: .85rem; padding: 6px 12px; }
+
+/* Column presets (customize modal) */
+.cf-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; flex: 0 0 auto; }
+.cf-preset { border: 1px solid var(--line); background: #fff; color: var(--ink-soft); padding: 6px 12px; border-radius: 999px; font-size: .82rem; font-weight: 600; cursor: pointer; }
+.cf-preset:hover { border-color: var(--brand); color: var(--brand); }
+.cf-preset.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.cf-preset-save { border-style: dashed; border-color: var(--brand); color: var(--brand); }
+
+/* ---- Review tab --------------------------------------------------------- */
+.review-view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.review-toolbar, .review-search { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.review-results { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+.rv-block { display: flex; flex-direction: column; gap: 6px; }
+.rv-block-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+.rv-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rv-chip { border: 1px solid var(--line); background: #fff; color: var(--ink-soft); padding: 6px 12px; border-radius: 999px; font-size: .82rem; font-weight: 600; cursor: pointer; }
+.rv-chip:hover { border-color: var(--brand); color: var(--brand); }
+.rv-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.rv-chip.rv-any { border-style: dashed; }
+.rv-chip.rv-any.active { background: #6d28d9; border-color: #6d28d9; }
+.rv-select { border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 10px; border-radius: 10px; font-size: .82rem; font-weight: 600; cursor: pointer; }
+
+.review-search { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; flex-direction: column; gap: 8px; }
+.rv-search-grid { display: flex; flex-wrap: wrap; gap: 8px 14px; width: 100%; }
+.rv-search-col { display: flex; flex-direction: column; gap: 3px; font-size: .72rem; color: var(--ink-soft); font-weight: 600; }
+.rv-search-input { border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: .82rem; min-width: 130px; }
+.rv-search-input:focus { outline: none; border-color: var(--brand); }
+
+.rv-results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.rv-count { font-size: .9rem; color: var(--ink-soft); }
+.review-copy.copied { color: var(--ok-ink); border-color: var(--ok-ink); }
+
+.review-table-block { margin-bottom: 22px; }
+.review-table-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.review-table-head h3 { margin: 0; font-size: 1rem; }
+.review-table-block .table-scroll { overflow-x: auto; }
+
+.rv-tags, .rv-next { white-space: normal; }
+.tag-btn { border: 1px dashed var(--line); background: transparent; border-radius: 8px; padding: 4px 8px; cursor: pointer; font: inherit; font-size: .8rem; color: var(--ink-soft); max-width: 260px; text-align: left; }
+.tag-btn:hover { border-color: var(--brand); }
+.tag-add-hint { color: var(--muted); }
+.tag-pill { display: inline-block; background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; border-radius: 999px; padding: 1px 8px; font-size: .75rem; font-weight: 600; }
+.next-step { border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; font-size: .8rem; background: #fff; color: var(--ink); }
+
+/* People-tags popup */
+.tag-modal { width: min(560px, 96vw); }
+.tag-current { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+.tag-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.tag-add input { flex: 1 1 auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
+.tag-pool-title { margin: 0 0 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+.tag-pool { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-apply { margin-top: 14px; }
+.tag-pill.removable { display: inline-flex; align-items: center; gap: 4px; padding-right: 4px; }
+.tag-rm { border: none; background: transparent; color: #3730a3; cursor: pointer; font-size: .95rem; line-height: 1; padding: 0 2px; border-radius: 5px; }
+.tag-rm:hover { background: rgba(55,48,163,.15); }
+
 @media (max-width: 780px) {
   .top-row { flex-direction: column; }
   .action-buttons { grid-template-columns: repeat(2, 1fr); }
@@ -320,3 +379,15 @@ html, body {
 .dark .error { background: #3f1d1d; color: #fecaca; border-color: #7f1d1d; }
 .dark .warnings { background: #3a2e12; color: #fde68a; border-color: #78591c; }
 .dark .warnings h3 { color: #fde68a; }
+
+/* Dark mode — presets + review */
+.dark .cf-preset, .dark .rv-chip { background: #1e293b; color: var(--ink-soft); border-color: var(--line); }
+.dark .cf-preset.active, .dark .rv-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.dark .rv-chip.rv-any.active { background: #7c3aed; border-color: #7c3aed; }
+.dark .rv-select, .dark .next-step, .dark .rv-search-input, .dark .tag-add input { background: #0f172a; color: var(--ink); border-color: var(--line); }
+.dark .review-search { background: #0f172a; border-color: var(--line); }
+.dark .tag-btn { color: var(--ink-soft); border-color: var(--line); }
+.dark .tag-pill { background: #1e293b; border-color: #334155; color: #c7d2fe; }
+.dark .tag-rm { color: #c7d2fe; }
+.dark .review-table.pv .head td { background: #1e293b; color: var(--ink); }
+.dark .review-table.pv td { background: transparent; }

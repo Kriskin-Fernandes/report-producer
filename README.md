@@ -50,13 +50,18 @@ customizable (see below).
   (`https://checkout.my.salesforce.com/<id>`), on screen and in the `.xlsx`.
 - **Add Opportunities CSV** (optional) loads a second export of opportunities
   and links them to accounts by Account ID (see *Opportunities* below).
-- **Customize data** opens a per-sheet panel with two lists — **Displayed** and
+- **Customize data** opens a per-view panel with two lists — **Displayed** and
   **Hidden**. Drag fields between the lists to show/hide them, or reorder within
   a list; the Displayed list (in order) is exactly what appears in the view
   **and** the downloaded report. The **pencil (✎)** next to a field renames it
   (the new name shows in the view and the `.xlsx`); **Revert names** restores
   the original CSV/built-in names. Every input column is available except
   U, V and Z, which are never shown.
+  - **Presets:** the panel shows a row of column presets — **Default** is
+    preloaded. Whenever you change the columns, a **＋ Save preset** button
+    appears; clicking it saves the current layout as **Preset 1**, **Preset 2**,
+    … Click any preset button to switch layouts. Presets are per view (each
+    report sheet and the Review tab keep their own) and are remembered.
 - Each group's first row has an **eye (👁) button**; clicking it opens that
   group directly in **Edit actions**.
 - **Edit actions** (all sheets) opens a full-screen mode that steps through the
@@ -68,7 +73,9 @@ customizable (see below).
   chosen, and a primary is required **only for Merge** — Close / Evaluate /
   None need no primary).
   Groups with **3+ records** show a **Remove (✕)** button per record so records
-  that don't belong can be dropped from the group (and from the report). On
+  that don't belong can be dropped from the group (and from the report). An
+  **↶ Undo remove** button brings back the last removed record (it works even
+  after the group drops to two rows, and after a reload). On
   Problematic duplicates the flagged reasons appear as large tags. Use
   **← / →** to move between groups, **Esc** to finish. Actions, remarks,
   removals and primary changes are written into the workbook on download.
@@ -100,6 +107,42 @@ Opportunities columns (read by position):
 | Account ID (links to the account) | F | 5 |
 | Stage | N | 13 |
 | Last modified date (MM/DD/YYYY) | X | 23 |
+
+## Review tab
+
+The **Review** tab pools **every group** (from all three sheets) and is meant
+to be used **after** you've assigned actions in Edit actions. Groups are
+partitioned into five tables by their assigned action + remarks:
+
+1. **Merge — no remarks**
+2. **Merge — with remarks**
+3. **Evaluate / None with remarks** (Evaluate, or None that carries a remark)
+4. **Close**
+5. **None** (no remarks)
+
+- **Which tables to show:** the **Tables** row has a toggle per table — include
+  or exclude each one individually.
+- **Customize data** applies to the Review columns too (its own preset list).
+- **Per-column search:** a search box for every column returns all **groups**
+  where the text appears in any row of that column (case-insensitive; multiple
+  column searches combine).
+- **People tags** (per-group column): click the cell to assign, create, or
+  remove tags. New tags join a global pool. **🏷 Tag all shown** adds the same
+  tags to every group currently shown (after search/filter).
+- **Next steps** (per-group column): a dropdown of **None / Contact / Follow up
+  / Done**. **Next step for all** sets it on every group currently shown.
+- **Filter tags:** click tag chips to filter. Selecting real tags matches
+  groups whose tag set is **exactly** those tags; adding the **Any** wildcard
+  chip switches to **includes** (superset) matching — e.g. `Alex` returns
+  groups tagged only `Alex`, while `Alex` + `Any` returns every group that
+  includes `Alex`.
+- **Copy for email:** each table has a **⧉ Copy** button, and **⧉ Copy
+  results** copies everything currently shown. The clipboard gets a compact,
+  email-ready HTML table (plus a plain-text fallback) using your customized
+  columns, and **excludes** the People tags / Next steps columns.
+
+Review edits (tags, next steps, table selection, column presets) are saved
+locally like the rest of your work.
 
 ## Saved edits (local storage, not cookies)
 

@@ -79,6 +79,11 @@
         Unclassified needs an action, and a primary only when the action is
         <em>Merge</em> — Close / Evaluate / None need no primary. Move with
         ← / →, finish with Esc.</li>
+      <li><strong>Review tab</strong> — after assigning actions, review groups
+        pooled and partitioned by action (Merge / Evaluate / Close / None). Add
+        <em>People tags</em> and <em>Next steps</em>, search any column, filter
+        by tags (with an <em>Any</em> wildcard), and <em>Copy</em> tables to
+        paste into an email.</li>
       <li><strong>⬇ Download (.xlsx)</strong> — a formatted workbook with all
         your choices baked in.</li>
     </ol>
@@ -139,7 +144,14 @@
         <button id="editBtn" class="btn" type="button">✎ Edit actions</button>
       </div>
     </div>
-    <div class="table-scroll"><table id="sheetTable" class="pv"></table></div>
+    <div class="table-scroll" id="sheetScroll"><table id="sheetTable" class="pv"></table></div>
+
+    <!-- Review: groups pooled from every sheet, partitioned by assigned action -->
+    <div id="reviewView" class="review-view" hidden>
+      <div id="reviewToolbar" class="review-toolbar"></div>
+      <div id="reviewSearch" class="review-search"></div>
+      <div id="reviewResults" class="review-results"></div>
+    </div>
   </section>
 
   <footer class="page-foot">
@@ -164,6 +176,7 @@
       <div id="editTags" class="edit-tags" hidden></div>
       <div class="edit-group-meta" id="editGroupMeta"></div>
       <div class="table-scroll edit-records"><table id="editTable" class="pv"></table></div>
+      <button id="editUndo" class="btn edit-undo" type="button" hidden></button>
       <div class="edit-remarks">
         <label for="remarksInput">Remarks for this group</label>
         <input id="remarksInput" type="text" placeholder="Optional note written to the report…" autocomplete="off" />
@@ -195,6 +208,7 @@
         — the new name shows in the view and the <code>.xlsx</code>.
         <strong>Revert names</strong> restores the original CSV names.
       </p>
+      <div class="cf-presets" id="cfPresets" aria-label="Column presets"></div>
       <div class="cf-cols">
         <div class="cf-col">
           <h4 class="cf-col-title">Displayed</h4>
@@ -205,6 +219,25 @@
           <ul id="cfHidden" class="cf-list" aria-label="Hidden fields"></ul>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- People-tags assignment popup (review mode) -->
+  <div id="tagOverlay" class="cf-overlay" role="dialog" aria-label="People tags" hidden>
+    <div class="cf-modal tag-modal">
+      <div class="cf-head">
+        <h3 id="tagTitle">People tags</h3>
+        <button id="tagClose" class="btn primary" type="button">Done ✓</button>
+      </div>
+      <p class="muted" id="tagHint"></p>
+      <div class="tag-current" id="tagCurrent" aria-label="Assigned tags"></div>
+      <div class="tag-add">
+        <input id="tagInput" type="text" placeholder="Type a tag name and press Enter…" autocomplete="off" aria-label="New tag name" />
+        <button id="tagAdd" class="btn" type="button">Add</button>
+      </div>
+      <h4 class="tag-pool-title">All tags</h4>
+      <div class="tag-pool" id="tagPool" aria-label="Tag pool"></div>
+      <div class="tag-apply" id="tagApply" hidden></div>
     </div>
   </div>
 

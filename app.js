@@ -26,27 +26,50 @@
     dashCard: $('dashCard'), stats: $('stats'), warnings: $('warnings'), warningList: $('warningList'),
     downloadBtn: $('downloadBtn'),
     viewer: $('viewer'), sheetTabs: $('sheetTabs'), customizeBtn: $('customizeBtn'), editBtn: $('editBtn'),
-    sheetTable: $('sheetTable'),
+    sheetTable: $('sheetTable'), sheetScroll: $('sheetScroll'),
+    reviewView: $('reviewView'), reviewToolbar: $('reviewToolbar'), reviewSearch: $('reviewSearch'), reviewResults: $('reviewResults'),
     editOverlay: $('editOverlay'), editSheet: $('editSheet'), editProgress: $('editProgress'),
     editCustomizeBtn: $('editCustomizeBtn'), editClose: $('editClose'),
     editPrimaryName: $('editPrimaryName'), editTags: $('editTags'), editGroupMeta: $('editGroupMeta'),
-    editTable: $('editTable'), remarksInput: $('remarksInput'),
+    editTable: $('editTable'), editUndo: $('editUndo'), remarksInput: $('remarksInput'),
     prevGroup: $('prevGroup'), nextGroup: $('nextGroup'), actionButtons: $('actionButtons'),
     customizeOverlay: $('customizeOverlay'), cfTitle: $('cfTitle'), cfClose: $('cfClose'),
-    cfRevert: $('cfRevert'), cfShown: $('cfShown'), cfHidden: $('cfHidden'),
+    cfRevert: $('cfRevert'), cfShown: $('cfShown'), cfHidden: $('cfHidden'), cfPresets: $('cfPresets'),
+    tagOverlay: $('tagOverlay'), tagTitle: $('tagTitle'), tagHint: $('tagHint'), tagCurrent: $('tagCurrent'),
+    tagInput: $('tagInput'), tagAdd: $('tagAdd'), tagPool: $('tagPool'), tagApply: $('tagApply'), tagClose: $('tagClose'),
     oppsOverlay: $('oppsOverlay'), oppsTitle: $('oppsTitle'), oppsClose: $('oppsClose'), oppsTable: $('oppsTable')
   };
 
+  // ---- Review constants -----------------------------------------------------
+  // Five tables, partitioning every group by its assigned action + remarks.
+  var REVIEW_TABLES = [
+    { title: 'Merge — no remarks' },
+    { title: 'Merge — with remarks' },
+    { title: 'Evaluate / None with remarks' },
+    { title: 'Close' },
+    { title: 'None' }
+  ];
+  var NEXT_STEPS = ['None', 'Contact', 'Follow up', 'Done'];
+  var ANY_TAG = 'Any'; // filter-only wildcard (never a real assignable tag)
+
   var state = {
     result: null,
-    activeSheet: 0,
+    activeSheet: 0,          // 0..N-1 = sheets; N = the Review tab
     edit: { active: false, sheet: 0, group: 0 },
-    cfSheet: 0,
+    cfTarget: null,          // sheet-like object the customize panel is editing
     cfEditingId: null,       // field id whose name is being edited inline
     opps: null,              // { byAccount: {id: [opp...]}, count, computedAt }
     oppsName: '',
     csvKey: null,            // localStorage key derived from the uploaded CSV
-    processMs: null          // how long parsing + building the report took
+    processMs: null,         // how long parsing + building the report took
+    // Review state
+    reviewSheet: null,       // the review field universe (result.review)
+    reviewInclude: null,     // [bool x5] which partition tables are shown
+    reviewSearch: {},        // fieldId -> search text
+    tagFilter: {},           // tagName -> true (plus ANY_TAG)
+    tagPool: [],             // global pool of people-tag names
+    tagTarget: null,         // group being tag-edited, or '*' for bulk-apply
+    tagBulkPick: null        // Set of tags chosen in bulk mode
   };
   var now = (typeof performance !== 'undefined' && performance.now) ? function () { return performance.now(); } : function () { return Date.now(); };
 
@@ -174,7 +197,9 @@
   els.oppsClose.addEventListener('click', function () { els.oppsOverlay.hidden = true; });
   els.oppsOverlay.addEventListener('click', function (e) { if (e.target === els.oppsOverlay) els.oppsOverlay.hidden = true; });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && !els.oppsOverlay.hidden) els.oppsOverlay.hidden = true;
+    if (e.key !== 'Escape') return;
+    if (!els.oppsOverlay.hidden) els.oppsOverlay.hidden = true;
+    else if (!els.tagOverlay.hidden) closeTagPopup();
   });
 
   function openOppsPopup(acct) {
@@ -209,6 +234,7 @@
     var d = e.target.closest('.row-del'); if (!d) return;
     deleteRecord(parseInt(d.getAttribute('data-row'), 10));
   });
+  els.editUndo.addEventListener('click', undoDelete);
   document.addEventListener('keydown', function (e) {
     if (!state.edit.active || !els.customizeOverlay.hidden || !els.oppsOverlay.hidden) return;
     if (e.key === 'Escape') { closeEdit(); return; }
@@ -242,10 +268,23 @@
     var t0 = now();
     state.result = RP.buildReport(RP.parseCSV(text));
     state.activeSheet = 0;
+    state.reviewSheet = state.result.review;
     lastName = deriveName(name);
     state.csvKey = STORAGE_PREFIX + hashText(text);
+    // Per-group review fields + a stable uid; reset defaults before restore.
+    state.reviewInclude = [true, true, true, true, true];
+    state.reviewSearch = {};
+    state.tagFilter = {};
+    state.tagPool = [];
+    eachGroup(function (g, si) {
+      g.uid = state.result.sheets[si].key + ':' + g.key;
+      g.peopleTags = [];
+      g.nextStep = 'None';
+      g.deletedRows = [];
+    });
     if (state.opps) applyOpps();  // re-attach opportunities to the fresh model
     restoreState();               // re-apply any saved edits for this exact file
+    ensurePresets();              // Default preset for every target if none saved
     state.processMs = Math.round(now() - t0);
     renderStats(state.result.stats);
     renderWarnings(state.result.warnings);
@@ -255,6 +294,15 @@
     els.viewer.hidden = false;
     els.viewer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
+  // Visit every group across all sheets: fn(group, sheetIndex, groupIndex).
+  function eachGroup(fn) {
+    if (!state.result) return;
+    state.result.sheets.forEach(function (s, si) {
+      s.groups.forEach(function (g, gi) { fn(g, si, gi); });
+    });
+  }
+  function allGroups() { var out = []; eachGroup(function (g) { out.push(g); }); return out; }
 
   // ---- Opportunities: parse, index, attach --------------------------------
   var OPP = { id: 0, owner: 2, role: 3, account: 5, stage: 13, modified: 23 }; // cols A,C,D,F,N,X
@@ -285,6 +333,7 @@
     els.oppsClear.hidden = true;
     if (state.result) {
       state.result.sheets.forEach(removeOppsField);
+      if (state.reviewSheet) removeOppsField(state.reviewSheet);
       state.result.sheets.forEach(function (s) {
         s.groups.forEach(function (g) { g.rows.forEach(function (r) { r.opps = null; r.oppsSummary = ''; }); });
       });
@@ -342,6 +391,7 @@
         });
       });
     });
+    if (state.reviewSheet) ensureOppsField(state.reviewSheet); // review shares the same rows
   }
 
   function ensureOppsField(sheet) {
@@ -400,7 +450,9 @@
   }
 
   function rerenderActive() {
-    if (state.edit.active) renderEditGroup(); else renderSheet();
+    if (state.edit.active) renderEditGroup();
+    else if (isReviewActive()) renderReview();
+    else renderSheet();
   }
 
   // ---- Local persistence ---------------------------------------------------
@@ -421,10 +473,14 @@
     return row && row.raw ? String(row.raw[RP.COL.accountId] == null ? '' : row.raw[RP.COL.accountId]).trim() : '';
   }
 
+  function layoutOf(sheet) {
+    return { fields: sheet.fields.map(function (f) { return { id: f.id, label: f.label }; }), displayCount: sheet.displayCount };
+  }
+
   function saveState() {
     if (!state.result || !state.csvKey) return;
     try {
-      var data = { sheets: {} };
+      var data = { sheets: {}, tagPool: state.tagPool.slice() };
       state.result.sheets.forEach(function (sheet) {
         var groups = {};
         sheet.groups.forEach(function (g) {
@@ -434,15 +490,26 @@
             primaryId: primary ? rowAcct(primary) : null,
             action: g.action,
             actionChosen: !!g.actionChosen,
-            remarks: g.remarks || ''
+            remarks: g.remarks || '',
+            peopleTags: (g.peopleTags || []).slice(),
+            nextStep: g.nextStep || 'None'
           };
         });
+        var lay = layoutOf(sheet);
         data.sheets[sheet.key] = {
-          fields: sheet.fields.map(function (f) { return { id: f.id, label: f.label }; }),
-          displayCount: sheet.displayCount,
+          fields: lay.fields, displayCount: lay.displayCount,
+          presets: sheet.presets, activePreset: sheet.activePreset,
           groups: groups
         };
       });
+      if (state.reviewSheet) {
+        var rlay = layoutOf(state.reviewSheet);
+        data.review = {
+          fields: rlay.fields, displayCount: rlay.displayCount,
+          presets: state.reviewSheet.presets, activePreset: state.reviewSheet.activePreset,
+          include: state.reviewInclude.slice()
+        };
+      }
       localStorage.setItem(state.csvKey, JSON.stringify(data));
     } catch (e) { /* storage unavailable/full — silently skip */ }
   }
@@ -457,20 +524,29 @@
     } catch (e) { return; }
     if (!data || !data.sheets) return;
 
+    if (Array.isArray(data.tagPool)) state.tagPool = data.tagPool.slice();
+
     state.result.sheets.forEach(function (sheet) {
       var s = data.sheets[sheet.key];
       if (!s) return;
       restoreFields(sheet, s);
+      restorePresets(sheet, s);
       sheet.groups.forEach(function (g) {
         var gs = s.groups && s.groups[g.key];
         if (!gs) return;
         // Rebuild rows in the saved order; account IDs absent from the saved
-        // order were removed by the user, so they drop out here.
+        // order were removed by the user. They drop out of g.rows but are kept
+        // in g.deletedRows so the removal can still be undone after a reload.
         if (Array.isArray(gs.order) && gs.order.length) {
           var byAcct = {};
           g.rows.forEach(function (r) { byAcct[rowAcct(r)] = r; });
           var newRows = gs.order.map(function (id) { return byAcct[id]; }).filter(Boolean);
-          if (newRows.length) g.rows = newRows;
+          if (newRows.length) {
+            var kept = {};
+            newRows.forEach(function (r) { kept[rowAcct(r)] = 1; });
+            g.deletedRows = g.rows.filter(function (r) { return !kept[rowAcct(r)]; });
+            g.rows = newRows;
+          }
         }
         g.rows.forEach(function (r) {
           var isP = gs.primaryId != null && rowAcct(r) === gs.primaryId;
@@ -479,8 +555,60 @@
         if (typeof gs.action === 'string') g.action = gs.action;
         g.actionChosen = !!gs.actionChosen;
         if (typeof gs.remarks === 'string') g.remarks = gs.remarks;
+        if (Array.isArray(gs.peopleTags)) g.peopleTags = gs.peopleTags.slice();
+        if (typeof gs.nextStep === 'string') g.nextStep = gs.nextStep;
       });
     });
+
+    if (data.review && state.reviewSheet) {
+      restoreFields(state.reviewSheet, data.review);
+      restorePresets(state.reviewSheet, data.review);
+      if (Array.isArray(data.review.include) && data.review.include.length === state.reviewInclude.length) {
+        state.reviewInclude = data.review.include.map(function (v) { return !!v; });
+      }
+    }
+  }
+
+  function restorePresets(sheet, s) {
+    if (s && Array.isArray(s.presets) && s.presets.length) {
+      sheet.presets = s.presets;
+      sheet.activePreset = (typeof s.activePreset === 'number' &&
+        s.activePreset >= 0 && s.activePreset < s.presets.length) ? s.activePreset : 0;
+    }
+  }
+
+  // ---- Column presets (per customization target) ---------------------------
+  function presetTargets() {
+    var t = state.result.sheets.slice();
+    if (state.reviewSheet) t.push(state.reviewSheet);
+    return t;
+  }
+  function ensurePresets() {
+    presetTargets().forEach(function (sheet) {
+      if (!Array.isArray(sheet.presets) || !sheet.presets.length) {
+        sheet.presets = [{ name: 'Default', layout: layoutOf(sheet) }];
+        sheet.activePreset = 0;
+      }
+    });
+  }
+  function layoutSig(lay) {
+    return lay.displayCount + '|' + lay.fields.map(function (f) { return f.id + '=' + f.label; }).join(',');
+  }
+  function presetIsDirty(sheet) {
+    if (!sheet.presets || !sheet.presets.length) return false;
+    var active = sheet.presets[sheet.activePreset] || sheet.presets[0];
+    return layoutSig(layoutOf(sheet)) !== layoutSig(active.layout);
+  }
+  function applyPreset(sheet, idx) {
+    var p = sheet.presets[idx];
+    if (!p) return;
+    restoreFields(sheet, p.layout);   // reorders / relabels existing fields
+    sheet.activePreset = idx;
+  }
+  function saveNewPreset(sheet) {
+    var n = sheet.presets.filter(function (p) { return p.name !== 'Default'; }).length + 1;
+    sheet.presets.push({ name: 'Preset ' + n, layout: layoutOf(sheet) });
+    sheet.activePreset = sheet.presets.length - 1;
   }
 
   function restoreFields(sheet, s) {
@@ -544,21 +672,38 @@
     els.warningList.innerHTML = warnings.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('');
   }
 
+  function reviewIndex() { return state.result.sheets.length; }
+  function isReviewActive() { return state.activeSheet === reviewIndex(); }
+
   function buildTabs() {
-    els.sheetTabs.innerHTML = state.result.sheets.map(function (s, i) {
+    var tabs = state.result.sheets.map(function (s, i) {
       return '<button type="button" role="tab" class="tab" data-index="' + i + '">' +
         esc(s.title) + ' <span class="tab-count">' + s.groups.length + '</span></button>';
-    }).join('');
+    });
+    tabs.push('<button type="button" role="tab" class="tab tab-review" data-index="' + reviewIndex() + '">' +
+      'Review <span class="tab-count">' + state.result.stats.totalGroups + '</span></button>');
+    els.sheetTabs.innerHTML = tabs.join('');
   }
 
   function selectSheet(i) {
     state.activeSheet = i;
-    var sheet = state.result.sheets[i];
     Array.prototype.forEach.call(els.sheetTabs.children, function (tab, idx) {
       var on = idx === i;
       tab.classList.toggle('active', on);
       tab.setAttribute('aria-selected', String(on));
     });
+    if (isReviewActive()) {
+      els.sheetScroll.hidden = true;
+      els.reviewView.hidden = false;
+      els.editBtn.hidden = true;
+      els.customizeBtn.hidden = false;
+      renderReview();
+      return;
+    }
+    els.reviewView.hidden = true;
+    els.sheetScroll.hidden = false;
+    els.customizeBtn.hidden = false;
+    var sheet = state.result.sheets[i];
     els.editBtn.hidden = !sheet.editable;
     els.editBtn.disabled = !sheet.editable || sheet.groups.length === 0;
     renderSheet();
@@ -622,6 +767,403 @@
     els.sheetTable.innerHTML = html;
   }
 
+  // ---- Review tab ----------------------------------------------------------
+  // Pools every group and partitions it by the assigned action + remarks:
+  //   0 Merge/no remarks · 1 Merge/remarks · 2 Evaluate or None-with-remarks
+  //   3 Close · 4 None (no remarks)
+  function reviewPartition(g) {
+    var a = g.action || 'None';
+    var hasRemarks = !!(g.remarks && g.remarks.trim());
+    if (a === 'Merge') return hasRemarks ? 1 : 0;
+    if (a === 'Evaluate' || (a === 'None' && hasRemarks)) return 2;
+    if (a === 'Close') return 3;
+    return 4; // None, no remarks
+  }
+
+  function reviewDataFields() { return RP.displayedFields(state.reviewSheet); }
+
+  function groupMatchesColumn(g, f, textLower) {
+    for (var i = 0; i < g.rows.length; i++) {
+      var v = RP.fieldValue(f, g, g.rows[i], i);
+      if (v && String(v).toLowerCase().indexOf(textLower) >= 0) return true;
+    }
+    return false;
+  }
+  function matchesSearch(g) {
+    var fields = reviewDataFields();
+    for (var fid in state.reviewSearch) {
+      if (!Object.prototype.hasOwnProperty.call(state.reviewSearch, fid)) continue;
+      var text = (state.reviewSearch[fid] || '').trim().toLowerCase();
+      if (!text) continue;
+      var f = fields.filter(function (x) { return x.id === fid; })[0];
+      if (!f) continue; // column no longer displayed → ignore its filter
+      if (!groupMatchesColumn(g, f, text)) return false;
+    }
+    return true;
+  }
+  function matchesTagFilter(g) {
+    var sel = Object.keys(state.tagFilter).filter(function (k) { return state.tagFilter[k]; });
+    var any = sel.indexOf(ANY_TAG) >= 0;
+    var real = sel.filter(function (t) { return t !== ANY_TAG; });
+    if (!real.length) return true; // nothing (or "Any" alone) selected → all groups
+    var tags = g.peopleTags || [];
+    for (var i = 0; i < real.length; i++) { if (tags.indexOf(real[i]) < 0) return false; }
+    return any ? true : tags.length === real.length; // Any = superset; else exact set
+  }
+  function filteredGroups() {
+    return allGroups().filter(function (g) { return matchesSearch(g) && matchesTagFilter(g); });
+  }
+  function partitionBuckets() {
+    var buckets = [[], [], [], [], []];
+    filteredGroups().forEach(function (g) { buckets[reviewPartition(g)].push(g); });
+    return buckets;
+  }
+  // Groups actually on screen (filtered AND in an included table) — the target
+  // of "apply to all results" and "copy results".
+  function visibleGroups() {
+    var out = [];
+    partitionBuckets().forEach(function (bucket, i) {
+      if (state.reviewInclude[i]) out.push.apply(out, bucket);
+    });
+    return out;
+  }
+  function findByUid(uid) {
+    var found = null;
+    eachGroup(function (g, si, gi) { if (g.uid === uid) found = { g: g, si: si, gi: gi }; });
+    return found;
+  }
+
+  function renderReview() {
+    renderReviewToolbar();
+    renderReviewSearchRow();
+    renderReviewResults();
+  }
+
+  function renderReviewToolbar() {
+    var incHtml = REVIEW_TABLES.map(function (t, i) {
+      return '<button type="button" class="rv-chip rv-inc' + (state.reviewInclude[i] ? ' active' : '') +
+        '" data-inc="' + i + '" aria-pressed="' + (state.reviewInclude[i] ? 'true' : 'false') + '">' +
+        esc(t.title) + '</button>';
+    }).join('');
+
+    var filterTags = [ANY_TAG].concat(state.tagPool);
+    var tfHtml = filterTags.map(function (t) {
+      var on = !!state.tagFilter[t];
+      return '<button type="button" class="rv-chip rv-tf' + (on ? ' active' : '') + (t === ANY_TAG ? ' rv-any' : '') +
+        '" data-tf="' + esc(t) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(t) + '</button>';
+    }).join('');
+
+    var nextHtml = '<select id="rvNextAll" class="rv-select" aria-label="Set next step for all shown groups">' +
+      '<option value="">Next step for all…</option>' +
+      NEXT_STEPS.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('') +
+      '</select>';
+
+    els.reviewToolbar.innerHTML =
+      '<div class="rv-block"><span class="rv-block-label">Tables</span><div class="rv-chips">' + incHtml + '</div></div>' +
+      '<div class="rv-block"><span class="rv-block-label">Filter tags</span><div class="rv-chips">' + tfHtml + '</div></div>' +
+      '<div class="rv-block"><span class="rv-block-label">Apply to all shown</span><div class="rv-chips">' +
+        '<button type="button" id="rvTagAll" class="btn">🏷 Tag all shown…</button>' + nextHtml +
+      '</div></div>';
+  }
+
+  function renderReviewSearchRow() {
+    var fields = reviewDataFields();
+    els.reviewSearch.innerHTML = '<span class="rv-block-label">Search columns</span>' +
+      '<div class="rv-search-grid">' + fields.map(function (f) {
+        return '<label class="rv-search-col"><span>' + esc(f.label) + '</span>' +
+          '<input type="search" class="rv-search-input" data-fid="' + esc(f.id) + '" value="' +
+          esc(state.reviewSearch[f.id] || '') + '" placeholder="filter…" autocomplete="off" /></label>';
+      }).join('') + '</div>';
+  }
+
+  function reviewGroupRowsHtml(g, si, gi, fields, withEye) {
+    var html = '';
+    g.rows.forEach(function (row, ri) {
+      var lead = withEye
+        ? '<td class="pv-eye">' + (ri === 0
+            ? '<button type="button" class="row-edit" data-uid="' + esc(g.uid) +
+              '" aria-label="Open this group in edit actions" title="Edit this group">&#128065;</button>'
+            : '') + '</td>'
+        : '';
+      var tagCell, nextCell;
+      if (ri === 0) {
+        var tags = g.peopleTags || [];
+        var tagLabel = tags.length
+          ? tags.map(function (t) { return '<span class="tag-pill">' + esc(t) + '</span>'; }).join(' ')
+          : '<span class="tag-add-hint">＋ Add tags</span>';
+        tagCell = '<td class="rv-tags"><button type="button" class="tag-btn" data-uid="' + esc(g.uid) +
+          '" title="Assign people tags">' + tagLabel + '</button></td>';
+        nextCell = '<td class="rv-next"><select class="next-step" data-uid="' + esc(g.uid) + '" aria-label="Next step">' +
+          NEXT_STEPS.map(function (s) {
+            return '<option value="' + esc(s) + '"' + ((g.nextStep || 'None') === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+          }).join('') + '</select></td>';
+      } else {
+        tagCell = '<td class="rv-tags"></td>';
+        nextCell = '<td class="rv-next"></td>';
+      }
+      html += '<tr' + (row.isPrimary ? ' class="primary"' : '') + '>' + lead +
+        fields.map(function (c) { return td(c, g, row, ri); }).join('') + tagCell + nextCell + '</tr>';
+    });
+    return html;
+  }
+
+  function renderReviewResults() {
+    var fields = reviewDataFields();
+    var buckets = partitionBuckets();
+    var loc = {};
+    eachGroup(function (g, si, gi) { loc[g.uid] = { si: si, gi: gi }; });
+    var withEye = true;
+    var span = 1 + fields.length + 2; // eye + data + (tags, next)
+
+    var shownCount = visibleGroups().length;
+    var head = '<div class="rv-results-head">' +
+      '<span class="rv-count">Showing <strong>' + shownCount + '</strong> group' + (shownCount === 1 ? '' : 's') + '</span>' +
+      '<button type="button" class="btn review-copy" data-copy="all">⧉ Copy results</button></div>';
+
+    var tables = '';
+    REVIEW_TABLES.forEach(function (t, i) {
+      if (!state.reviewInclude[i]) return;
+      var groups = buckets[i];
+      var block = '<div class="review-table-block">' +
+        '<div class="review-table-head"><h3>' + esc(t.title) +
+        ' <span class="tab-count">' + groups.length + '</span></h3>' +
+        '<button type="button" class="btn review-copy" data-copy="' + i + '"' + (groups.length ? '' : ' disabled') + '>⧉ Copy</button></div>';
+      var rows = '<tr class="head"><td class="pv-eye-head"></td>' +
+        fields.map(function (c) { return '<td>' + esc(c.label) + '</td>'; }).join('') +
+        '<td>People tags</td><td>Next steps</td></tr>';
+      if (!groups.length) {
+        rows += '<tr class="empty"><td colspan="' + span + '">No groups.</td></tr>';
+      } else {
+        groups.forEach(function (g, gj) {
+          if (gj > 0) rows += '<tr class="blank"><td colspan="' + span + '"></td></tr>';
+          var l = loc[g.uid] || {};
+          rows += reviewGroupRowsHtml(g, l.si, l.gi, fields, withEye);
+        });
+      }
+      block += '<div class="table-scroll"><table class="pv theme-gray review-table">' + rows + '</table></div></div>';
+      tables += block;
+    });
+
+    els.reviewResults.innerHTML = head + (tables || '<p class="muted">No tables selected.</p>');
+  }
+
+  // ---- Review: clipboard (email-friendly) ----------------------------------
+  function reviewCopyMatrix(groups) {
+    var fields = reviewDataFields();
+    var header = fields.map(function (f) { return f.label; });
+    var body = [];
+    groups.forEach(function (g) {
+      g.rows.forEach(function (row, ri) {
+        body.push({ primary: !!row.isPrimary, first: ri === 0, cells: fields.map(function (f) { return String(RP.fieldValue(f, g, row, ri)); }) });
+      });
+    });
+    return { header: header, body: body };
+  }
+  // Email-friendly HTML. Uses presentational tags/attributes (no inline
+  // `style=`) so it stays within the page's strict style-src CSP, while still
+  // pasting as a bordered table into Outlook / Gmail.
+  function copyHtml(m, caption) {
+    var cols = m.header.length;
+    var th = m.header.map(function (h) { return '<th align="left">' + esc(h) + '</th>'; }).join('');
+    var trs = m.body.map(function (r, i) {
+      var sep = (r.first && i > 0) ? '<tr><td colspan="' + cols + '">&nbsp;</td></tr>' : '';
+      var tds = r.cells.map(function (c) { return '<td>' + (r.primary ? '<b>' + esc(c) + '</b>' : esc(c)) + '</td>'; }).join('');
+      return sep + '<tr>' + tds + '</tr>';
+    }).join('');
+    return (caption ? '<p><b>' + esc(caption) + '</b></p>' : '') +
+      '<table border="1" cellspacing="0" cellpadding="4"><thead><tr>' + th + '</tr></thead><tbody>' + trs + '</tbody></table>';
+  }
+  function copyText(m, caption) {
+    var lines = [];
+    if (caption) lines.push(caption);
+    lines.push(m.header.join('\t'));
+    m.body.forEach(function (r, i) {
+      if (r.first && i > 0) lines.push(''); // blank line between groups
+      lines.push(r.cells.join('\t'));
+    });
+    return lines.join('\n');
+  }
+  function legacyCopy(text) {
+    return new Promise(function (resolve) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      } catch (e) { /* ignore */ }
+      resolve();
+    });
+  }
+  function writeClipboard(html, text) {
+    if (navigator.clipboard && typeof window.ClipboardItem === 'function') {
+      try {
+        var item = new window.ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' })
+        });
+        return navigator.clipboard.write([item]).catch(function () { return legacyCopy(text); });
+      } catch (e) { return legacyCopy(text); }
+    }
+    return legacyCopy(text);
+  }
+  function flashCopied(btn) {
+    if (!btn) return;
+    var prev = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(function () { btn.textContent = prev; btn.classList.remove('copied'); }, 1500);
+  }
+  function doCopy(which, btn) {
+    var groups, caption;
+    if (which === 'all') { groups = visibleGroups(); caption = 'Review — ' + groups.length + ' group(s)'; }
+    else {
+      var i = parseInt(which, 10);
+      groups = partitionBuckets()[i] || [];
+      caption = REVIEW_TABLES[i].title + ' — ' + groups.length + ' group(s)';
+    }
+    if (!groups.length) return;
+    var m = reviewCopyMatrix(groups);
+    writeClipboard(copyHtml(m, caption), copyText(m, caption)).then(function () { flashCopied(btn); });
+  }
+
+  // ---- Review: event wiring ------------------------------------------------
+  els.reviewToolbar.addEventListener('click', function (e) {
+    var inc = e.target.closest('.rv-inc');
+    if (inc) { var i = parseInt(inc.getAttribute('data-inc'), 10); state.reviewInclude[i] = !state.reviewInclude[i]; saveState(); renderReview(); return; }
+    var tf = e.target.closest('.rv-tf');
+    if (tf) { var t = tf.getAttribute('data-tf'); state.tagFilter[t] = !state.tagFilter[t]; renderReview(); return; }
+    if (e.target.closest('#rvTagAll')) { openTagPopup('*'); return; }
+  });
+  els.reviewToolbar.addEventListener('change', function (e) {
+    var sel = e.target.closest('#rvNextAll'); if (!sel) return;
+    var v = sel.value; if (NEXT_STEPS.indexOf(v) < 0) return;
+    visibleGroups().forEach(function (g) { g.nextStep = v; });
+    saveState(); renderReview();
+  });
+  els.reviewSearch.addEventListener('input', function (e) {
+    var inp = e.target.closest('.rv-search-input'); if (!inp) return;
+    state.reviewSearch[inp.getAttribute('data-fid')] = inp.value;
+    renderReviewResults(); // only the results, so the focused input keeps focus
+  });
+  els.reviewResults.addEventListener('click', function (e) {
+    var copy = e.target.closest('.review-copy');
+    if (copy) { doCopy(copy.getAttribute('data-copy'), copy); return; }
+    var tagB = e.target.closest('.tag-btn');
+    if (tagB) { var f = findByUid(tagB.getAttribute('data-uid')); if (f) openTagPopup(f.g); return; }
+    var eye = e.target.closest('.row-edit');
+    if (eye) { var g2 = findByUid(eye.getAttribute('data-uid')); if (g2) openEdit(g2.si, g2.gi); return; }
+  });
+  els.reviewResults.addEventListener('change', function (e) {
+    var sel = e.target.closest('.next-step'); if (!sel) return;
+    var f = findByUid(sel.getAttribute('data-uid')); if (!f) return;
+    f.g.nextStep = sel.value; saveState();
+  });
+
+  // ---- Review: people-tags popup -------------------------------------------
+  function openTagPopup(target) {
+    state.tagTarget = target;          // a group object, or '*' for bulk-apply
+    state.tagBulkPick = {};
+    renderTagPopup();
+    els.tagOverlay.hidden = false;
+    els.tagInput.value = '';
+    els.tagInput.focus();
+  }
+  function closeTagPopup() {
+    els.tagOverlay.hidden = true;
+    state.tagTarget = null;
+    if (isReviewActive()) renderReview(); // new pool tags appear as filter chips
+  }
+
+  function renderTagPopup() {
+    var bulk = state.tagTarget === '*';
+    if (bulk) {
+      var n = visibleGroups().length;
+      els.tagTitle.textContent = 'Tag all shown groups';
+      els.tagHint.textContent = 'Pick or create tags, then apply them to all ' + n + ' shown group(s).';
+      els.tagCurrent.hidden = true;
+    } else {
+      var g = state.tagTarget;
+      els.tagTitle.textContent = 'People tags';
+      els.tagHint.textContent = 'Assign, create, or remove tags for this group.';
+      els.tagCurrent.hidden = false;
+      var tags = g.peopleTags || [];
+      els.tagCurrent.innerHTML = tags.length
+        ? tags.map(function (t) {
+            return '<span class="tag-pill removable" data-rm="' + esc(t) + '">' + esc(t) +
+              '<button type="button" class="tag-rm" data-rm="' + esc(t) + '" aria-label="Remove ' + esc(t) + '">×</button></span>';
+          }).join(' ')
+        : '<span class="muted">No tags yet.</span>';
+    }
+    els.tagPool.innerHTML = state.tagPool.length
+      ? state.tagPool.map(function (t) {
+          var on = bulk ? !!state.tagBulkPick[t] : (state.tagTarget.peopleTags || []).indexOf(t) >= 0;
+          return '<button type="button" class="rv-chip tag-pool-chip' + (on ? ' active' : '') + '" data-tag="' + esc(t) + '">' + esc(t) + '</button>';
+        }).join('')
+      : '<span class="muted">No tags created yet — type one below.</span>';
+    els.tagApply.hidden = !bulk;
+    if (bulk) {
+      var picks = Object.keys(state.tagBulkPick).filter(function (k) { return state.tagBulkPick[k]; }).length;
+      els.tagApply.innerHTML = '<button type="button" id="tagApplyBtn" class="btn primary"' + (picks ? '' : ' disabled') +
+        '>Apply ' + picks + ' tag(s) to all shown</button>';
+    }
+  }
+
+  function poolAdd(tag) { if (state.tagPool.indexOf(tag) < 0) { state.tagPool.push(tag); } }
+
+  function addTagFromInput() {
+    var v = els.tagInput.value.trim();
+    if (!v) return;
+    poolAdd(v);
+    if (state.tagTarget === '*') { state.tagBulkPick[v] = true; }
+    else {
+      var g = state.tagTarget;
+      if (!g.peopleTags) g.peopleTags = [];
+      if (g.peopleTags.indexOf(v) < 0) g.peopleTags.push(v);
+      saveState();
+    }
+    els.tagInput.value = '';
+    els.tagInput.focus();
+    renderTagPopup();
+    if (state.tagTarget !== '*') renderReviewResults();
+    if (state.tagTarget === '*') saveState(); // persist the enlarged pool
+  }
+  function togglePoolTag(tag) {
+    if (state.tagTarget === '*') { state.tagBulkPick[tag] = !state.tagBulkPick[tag]; renderTagPopup(); return; }
+    var g = state.tagTarget;
+    if (!g.peopleTags) g.peopleTags = [];
+    var i = g.peopleTags.indexOf(tag);
+    if (i >= 0) g.peopleTags.splice(i, 1); else g.peopleTags.push(tag);
+    saveState(); renderTagPopup(); renderReviewResults();
+  }
+  function removeTagFromGroup(tag) {
+    var g = state.tagTarget; if (g === '*' || !g.peopleTags) return;
+    var i = g.peopleTags.indexOf(tag);
+    if (i >= 0) { g.peopleTags.splice(i, 1); saveState(); renderTagPopup(); renderReviewResults(); }
+  }
+  function applyBulkTags() {
+    var picks = Object.keys(state.tagBulkPick).filter(function (k) { return state.tagBulkPick[k]; });
+    if (!picks.length) return;
+    visibleGroups().forEach(function (g) {
+      if (!g.peopleTags) g.peopleTags = [];
+      picks.forEach(function (t) { if (g.peopleTags.indexOf(t) < 0) g.peopleTags.push(t); });
+    });
+    saveState();
+    closeTagPopup();
+    renderReview();
+  }
+
+  els.tagAdd.addEventListener('click', addTagFromInput);
+  els.tagInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addTagFromInput(); } });
+  els.tagClose.addEventListener('click', closeTagPopup);
+  els.tagOverlay.addEventListener('click', function (e) {
+    if (e.target === els.tagOverlay) { closeTagPopup(); return; }
+    var pool = e.target.closest('.tag-pool-chip');
+    if (pool) { togglePoolTag(pool.getAttribute('data-tag')); return; }
+    var rm = e.target.closest('.tag-rm');
+    if (rm) { removeTagFromGroup(rm.getAttribute('data-rm')); return; }
+    if (e.target.closest('#tagApplyBtn')) { applyBulkTags(); return; }
+  });
+
   // ---- Edit-actions mode ---------------------------------------------------
   function currentSheet() { return state.result.sheets[state.edit.sheet]; }
   function currentGroup() { return currentSheet().groups[state.edit.group]; }
@@ -643,7 +1185,8 @@
     saveState();
     state.edit.active = false;
     els.editOverlay.hidden = true;
-    renderSheet();
+    // Edit can be opened from any tab (incl. Review); re-render the active one.
+    if (isReviewActive()) renderReview(); else renderSheet();
   }
 
   function navGroup(delta) {
@@ -702,7 +1245,18 @@
   function deleteRecord(idx) {
     var g = currentGroup();
     if (g.rows.length <= 2 || idx < 0 || idx >= g.rows.length) return;
-    g.rows.splice(idx, 1);
+    var removed = g.rows.splice(idx, 1)[0];
+    if (!g.deletedRows) g.deletedRows = [];
+    g.deletedRows.push(removed);   // remember for undo
+    saveState();
+    renderEditGroup();
+  }
+
+  // Undo the most recent record removal for the current group.
+  function undoDelete() {
+    var g = currentGroup();
+    if (!g.deletedRows || !g.deletedRows.length) return;
+    g.rows.push(g.deletedRows.pop());
     saveState();
     renderEditGroup();
   }
@@ -777,6 +1331,12 @@
     els.editTable.className = 'pv theme-' + sheet.theme.name;
     els.editTable.innerHTML = html;
 
+    // Undo the last record removal (available even after the group drops to 2
+    // rows, and after a reload — the removed rows are reconstructed on restore).
+    var undoN = (g.deletedRows && g.deletedRows.length) || 0;
+    els.editUndo.hidden = undoN === 0;
+    els.editUndo.textContent = '↶ Undo remove' + (undoN > 1 ? ' (' + undoN + ')' : '');
+
     els.remarksInput.value = g.remarks || '';
 
     els.actionButtons.innerHTML = ACTION_ORDER.map(function (a) {
@@ -792,10 +1352,13 @@
   var dragEl = null;
 
   function openCustomize() {
-    state.cfSheet = state.edit.active ? state.edit.sheet : state.activeSheet;
+    state.cfTarget = state.edit.active ? state.result.sheets[state.edit.sheet]
+      : isReviewActive() ? state.reviewSheet
+      : state.result.sheets[state.activeSheet];
     state.cfEditingId = null;
-    els.cfTitle.textContent = 'Customize: ' + state.result.sheets[state.cfSheet].title;
+    els.cfTitle.textContent = 'Customize: ' + state.cfTarget.title;
     renderCfLists();
+    renderCfPresets();
     els.customizeOverlay.hidden = false;
   }
   els.cfClose.addEventListener('click', function () {
@@ -803,10 +1366,11 @@
     els.customizeOverlay.hidden = true;
   });
   els.cfRevert.addEventListener('click', function () {
-    var sheet = state.result.sheets[state.cfSheet];
+    var sheet = state.cfTarget;
     sheet.fields.forEach(function (f) { f.label = f.defaultLabel; });
     state.cfEditingId = null;
     renderCfLists();
+    renderCfPresets();
     rerenderActive();
     saveState();
   });
@@ -830,7 +1394,7 @@
   function cfEmpty(msg) { return '<li class="cf-empty">' + esc(msg) + '</li>'; }
 
   function renderCfLists() {
-    var sheet = state.result.sheets[state.cfSheet];
+    var sheet = state.cfTarget;
     var shown = sheet.fields.slice(0, sheet.displayCount);
     var hidden = sheet.fields.slice(sheet.displayCount);
     els.cfShown.innerHTML = shown.map(cfItemHtml).join('') || cfEmpty('Drag fields here to show them');
@@ -840,6 +1404,33 @@
       if (inp) { inp.focus(); inp.select(); }
     }
   }
+
+  // Preset row: one button per saved preset, plus a "Save preset" button that
+  // appears only when the current columns differ from the active preset.
+  function renderCfPresets() {
+    var sheet = state.cfTarget;
+    if (!sheet.presets) return;
+    var html = sheet.presets.map(function (p, i) {
+      return '<button type="button" class="cf-preset' + (i === sheet.activePreset ? ' active' : '') +
+        '" data-preset="' + i + '">' + esc(p.name) + '</button>';
+    }).join('');
+    if (presetIsDirty(sheet)) {
+      html += '<button type="button" class="cf-preset cf-preset-save" data-preset="save">＋ Save preset</button>';
+    }
+    els.cfPresets.innerHTML = html;
+  }
+  els.cfPresets.addEventListener('click', function (e) {
+    var b = e.target.closest('.cf-preset'); if (!b) return;
+    var which = b.getAttribute('data-preset');
+    var sheet = state.cfTarget;
+    if (which === 'save') saveNewPreset(sheet);
+    else applyPreset(sheet, parseInt(which, 10));
+    state.cfEditingId = null;
+    renderCfLists();
+    renderCfPresets();
+    rerenderActive();
+    saveState();
+  });
 
   // Rename: pencil -> inline input; ✓/Enter/blur commit; Esc cancels.
   els.customizeOverlay.addEventListener('click', function (e) {
@@ -859,11 +1450,12 @@
   function commitRename() {
     var id = state.cfEditingId; if (!id) return;
     var inp = els.customizeOverlay.querySelector('.cf-rename-input');
-    var sheet = state.result.sheets[state.cfSheet];
+    var sheet = state.cfTarget;
     var f = sheet.fields.filter(function (x) { return x.id === id; })[0];
     if (f && inp) { var v = inp.value.trim(); f.label = v || f.defaultLabel; }
     state.cfEditingId = null;
     renderCfLists();
+    renderCfPresets();
     rerenderActive();
     saveState();
   }
@@ -907,7 +1499,7 @@
   }
 
   function applyCfOrder() {
-    var sheet = state.result.sheets[state.cfSheet];
+    var sheet = state.cfTarget;
     var shownIds = idsIn(els.cfShown), hiddenIds = idsIn(els.cfHidden);
     var byId = {};
     sheet.fields.forEach(function (f) { byId[f.id] = f; });
@@ -918,6 +1510,7 @@
       sheet.displayCount = shownIds.length;
     }
     renderCfLists();
+    renderCfPresets();
     rerenderActive();
     saveState();
   }

@@ -84,7 +84,9 @@
   var DISPLAYED = {
     likely: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defCaptured(), defReason(), defRemarks()]; },
     attention: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defCaptured(), defReason(), defNotes(), defRemarks()]; },
-    unclassified: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defCaptured(), defNotes(), defRemarks()]; }
+    unclassified: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defCaptured(), defNotes(), defRemarks()]; },
+    // The Review tab pools every group; its default columns are the superset.
+    review: function () { return [defAction(), defClass(), defName(), defAlias(), defId(), defType(), defOwner(), defManager(), defCaptured(), defRemarks()]; }
   };
 
   // ---- Helpers --------------------------------------------------------------
@@ -249,6 +251,10 @@
         THEME.gray, fieldsFor('unclassified'), unclassifiedGroups, 'unclassified', true)
     ];
 
+    // Review field universe (customizable independently of the three sheets).
+    var reviewConf = fieldsFor('review');
+    var review = { key: 'review', title: 'Review', fields: reviewConf.fields, displayCount: reviewConf.displayCount, actionOptions: ACTION_OPTIONS };
+
     var stats = {
       totalDataRows: dataRows.length,
       totalGroups: groups.length,
@@ -260,7 +266,7 @@
       unclassifiedRecords: countRecords(unclassifiedGroups)
     };
 
-    return { sheets: sheets, stats: stats, warnings: warnings, header: header };
+    return { sheets: sheets, review: review, stats: stats, warnings: warnings, header: header };
   }
 
   function countRecords(groups) { return groups.reduce(function (n, g) { return n + g.records.length; }, 0); }

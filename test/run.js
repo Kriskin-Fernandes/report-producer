@@ -39,6 +39,12 @@ eq(labels(RP.displayedFields(unclassified)),
   ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Total Captured Amount ($USD)', 'Notes', 'Remarks'],
   'Unclassified displayed fields (has Remarks now)');
 
+// Review field universe exists with its own customizable columns.
+assert(result.review && Array.isArray(result.review.fields) && result.review.displayCount > 0, 'result.review has a field universe');
+eq(labels(RP.displayedFields(result.review)),
+  ['Action', 'Classification', 'Account Name', 'Alias account', 'Account ID', 'Type', 'Owner', 'Account Manager', 'Total Captured Amount ($USD)', 'Remarks'],
+  'Review default displayed fields');
+
 // Hidden (detail) fields.
 eq(labels(likely.fields.slice(likely.displayCount)),
   ['Region', 'MID', 'Created', 'Relationships', 'Country Conflict'], 'Likely hidden fields');
