@@ -272,12 +272,14 @@
     lastName = deriveName(name);
     state.csvKey = STORAGE_PREFIX + hashText(text);
     // Per-group review fields + a stable uid; reset defaults before restore.
-    state.reviewInclude = [true, true, true, true, true];
+    // reviewInclude selects which report sections (sheets) feed the Review tab.
+    state.reviewInclude = state.result.sheets.map(function () { return true; });
     state.reviewSearch = {};
     state.tagFilter = {};
     state.tagPool = [];
     eachGroup(function (g, si) {
       g.uid = state.result.sheets[si].key + ':' + g.key;
+      g.sheetIndex = si;
       g.peopleTags = [];
       g.nextStep = 'None';
       g.deletedRows = [];
@@ -810,22 +812,19 @@
     for (var i = 0; i < real.length; i++) { if (tags.indexOf(real[i]) < 0) return false; }
     return any ? true : tags.length === real.length; // Any = superset; else exact set
   }
-  function filteredGroups() {
-    return allGroups().filter(function (g) { return matchesSearch(g) && matchesTagFilter(g); });
+  // A group is on screen when its report section is included and it passes the
+  // column search + tag filter. This is the target of "apply to all shown" and
+  // "copy results". The five partition tables below just re-group these.
+  function sectionIncluded(g) { return state.reviewInclude[g.sheetIndex] !== false; }
+  function visibleGroups() {
+    return allGroups().filter(function (g) {
+      return sectionIncluded(g) && matchesSearch(g) && matchesTagFilter(g);
+    });
   }
   function partitionBuckets() {
     var buckets = [[], [], [], [], []];
-    filteredGroups().forEach(function (g) { buckets[reviewPartition(g)].push(g); });
+    visibleGroups().forEach(function (g) { buckets[reviewPartition(g)].push(g); });
     return buckets;
-  }
-  // Groups actually on screen (filtered AND in an included table) — the target
-  // of "apply to all results" and "copy results".
-  function visibleGroups() {
-    var out = [];
-    partitionBuckets().forEach(function (bucket, i) {
-      if (state.reviewInclude[i]) out.push.apply(out, bucket);
-    });
-    return out;
   }
   function findByUid(uid) {
     var found = null;
@@ -840,10 +839,12 @@
   }
 
   function renderReviewToolbar() {
-    var incHtml = REVIEW_TABLES.map(function (t, i) {
-      return '<button type="button" class="rv-chip rv-inc' + (state.reviewInclude[i] ? ' active' : '') +
-        '" data-inc="' + i + '" aria-pressed="' + (state.reviewInclude[i] ? 'true' : 'false') + '">' +
-        esc(t.title) + '</button>';
+    // Include/exclude by report SECTION (Likely / Problematic / Unclassified).
+    var incHtml = state.result.sheets.map(function (s, i) {
+      var on = state.reviewInclude[i] !== false;
+      return '<button type="button" class="rv-chip rv-inc' + (on ? ' active' : '') +
+        '" data-inc="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        esc(s.title) + '</button>';
     }).join('');
 
     var filterTags = [ANY_TAG].concat(state.tagPool);
@@ -859,7 +860,7 @@
       '</select>';
 
     els.reviewToolbar.innerHTML =
-      '<div class="rv-block"><span class="rv-block-label">Tables</span><div class="rv-chips">' + incHtml + '</div></div>' +
+      '<div class="rv-block"><span class="rv-block-label">Sections</span><div class="rv-chips">' + incHtml + '</div></div>' +
       '<div class="rv-block"><span class="rv-block-label">Filter tags</span><div class="rv-chips">' + tfHtml + '</div></div>' +
       '<div class="rv-block"><span class="rv-block-label">Apply to all shown</span><div class="rv-chips">' +
         '<button type="button" id="rvTagAll" class="btn">🏷 Tag all shown…</button>' + nextHtml +
@@ -922,7 +923,6 @@
 
     var tables = '';
     REVIEW_TABLES.forEach(function (t, i) {
-      if (!state.reviewInclude[i]) return;
       var groups = buckets[i];
       var block = '<div class="review-table-block">' +
         '<div class="review-table-head"><h3>' + esc(t.title) +

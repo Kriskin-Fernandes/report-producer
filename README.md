@@ -120,8 +120,10 @@ partitioned into five tables by their assigned action + remarks:
 4. **Close**
 5. **None** (no remarks)
 
-- **Which tables to show:** the **Tables** row has a toggle per table — include
-  or exclude each one individually.
+- **Which sections to include:** the **Sections** row has a toggle per report
+  section (**Likely duplicates**, **Problematic duplicates**, **Unclassified**)
+  — include or exclude each one. Excluding a section drops its groups from every
+  partition table. The five partition tables above always stay separated.
 - **Customize data** applies to the Review columns too (its own preset list).
 - **Per-column search:** a search box for every column returns all **groups**
   where the text appears in any row of that column (case-insensitive; multiple
