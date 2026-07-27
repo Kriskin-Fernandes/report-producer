@@ -19,7 +19,8 @@ on **GitHub Pages**.
 You upload the export CSV (first row = headings, records below). The tool
 groups records by **stripped domain (column U)**, classifies each group using
 the **Classification (column X)** value carried over from the input, and
-produces a workbook with **three sheets**, one per section. Every record keeps
+produces a workbook with **three section sheets** (one per section) plus a
+**Review** sheet (see below). Every record keeps
 its own row (like the input); the **Primary** record in each group is
 identified by its Classification value, reordered to the **top** of its group,
 and emphasized with bold text.
@@ -155,6 +156,12 @@ partitioned into five tables by their assigned action + remarks:
 
 The results **fill the page** — there's nothing below them, so the tables grow
 as tall as they need and the page itself scrolls (no fixed inner scroll box).
+
+- **Export:** the downloaded `.xlsx` includes a **Review** sheet — your
+  customized Review columns plus four extra group-level columns: **People
+  tag1**, **People tag2**, **People rest** (the 3rd tag onward, comma-joined)
+  and **Next steps**. It covers every group (ordered by the five action
+  partitions), independent of the on-screen search/tag filters.
 
 Review edits (tags, next steps, section selection, column presets) are saved
 locally like the rest of your work.

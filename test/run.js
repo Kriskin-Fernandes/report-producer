@@ -15,6 +15,28 @@ function assert(cond, msg) { console.log((cond ? '  ok  - ' : '  FAIL- ') + msg)
 function eq(a, b, msg) { assert(JSON.stringify(a) === JSON.stringify(b), msg + '  (got ' + JSON.stringify(a) + ', expected ' + JSON.stringify(b) + ')'); }
 function labels(fields) { return fields.map(function (f) { return f.label; }); }
 
+// Mirror of app.js reviewExportSheet(): the Review field universe + four extra
+// group-level columns (People tag1/2/rest, Next steps), over every group.
+function reviewExportSheet(res) {
+  var displayed = RP.displayedFields(res.review).map(RP.cloneField);
+  var extra = [
+    RP.makeField('ptag1', 'People tag1', 'data', { group: 1, fit: 1, width: 18 }),
+    RP.makeField('ptag2', 'People tag2', 'data', { group: 1, fit: 1, width: 18 }),
+    RP.makeField('prest', 'People rest', 'data', { group: 1, fit: 1, width: 24 }),
+    RP.makeField('nextStep', 'Next steps', 'data', { group: 1, fit: 1, width: 14 })
+  ];
+  var groups = [];
+  res.sheets.forEach(function (s) { s.groups.forEach(function (g) { groups.push(g); }); });
+  groups.forEach(function (g) {
+    var t = g.peopleTags || [];
+    g.ptag1 = t[0] || ''; g.ptag2 = t[1] || ''; g.prest = t.slice(2).join(', ');
+    if (!g.nextStep) g.nextStep = 'None';
+  });
+  return { key: 'review', title: 'Review', description: 'Review', theme: RP.THEME.gray,
+    editable: false, fields: displayed.concat(extra), displayCount: displayed.length + extra.length,
+    actionOptions: RP.ACTION_OPTIONS, groups: groups };
+}
+
 require('./gen-sample.js');
 var text = fs.readFileSync(path.join(__dirname, 'sample-export.csv'), 'utf8');
 var result = RP.buildReport(RP.parseCSV(text));
@@ -146,6 +168,26 @@ eq(RP.fieldValue(oppsField, sh.groups[0], sh.groups[0].rows[1], 1), '', 'Opportu
 var oppsBytes = XW.buildWorkbook(fresh1.sheets);
 assert(oppsBytes instanceof Uint8Array && oppsBytes.length > 0, 'Workbook builds with Opportunities column');
 
+console.log('\n=== Review export sheet ===');
+var revRes = RP.buildReport(RP.parseCSV(text));
+var rg0 = revRes.sheets[0].groups[0];
+rg0.peopleTags = ['Alex', 'Bob', 'Carol', 'Dave'];
+rg0.nextStep = 'Done';
+var revSheet = reviewExportSheet(revRes);
+eq(labels(RP.displayedFields(revSheet)).slice(-4), ['People tag1', 'People tag2', 'People rest', 'Next steps'],
+  'Review export appends the four extra columns last');
+var f1 = revSheet.fields.filter(function (f) { return f.id === 'ptag1'; })[0];
+var f2 = revSheet.fields.filter(function (f) { return f.id === 'ptag2'; })[0];
+var fr = revSheet.fields.filter(function (f) { return f.id === 'prest'; })[0];
+var fn = revSheet.fields.filter(function (f) { return f.id === 'nextStep'; })[0];
+eq(RP.fieldValue(f1, rg0, rg0.rows[0], 0), 'Alex', 'People tag1 = first tag');
+eq(RP.fieldValue(f2, rg0, rg0.rows[0], 0), 'Bob', 'People tag2 = second tag');
+eq(RP.fieldValue(fr, rg0, rg0.rows[0], 0), 'Carol, Dave', 'People rest = 3rd+ tags joined');
+eq(RP.fieldValue(fn, rg0, rg0.rows[0], 0), 'Done', 'Next steps value');
+eq(RP.fieldValue(f1, rg0, rg0.rows[1], 1), '', 'Tag columns are blank on non-top rows');
+var revBytes = XW.buildWorkbook(revRes.sheets.concat([revSheet]));
+assert(revBytes instanceof Uint8Array && revBytes.length > 0, 'Workbook builds with the Review sheet appended');
+
 console.log('\n=== Workbook ===');
 attention.groups[0].action = 'Merge';
 attention.groups[0].actionChosen = true;
@@ -164,7 +206,9 @@ assert(hasEocd, 'Has End-Of-Central-Directory record');
 var fresh = RP.buildReport(RP.parseCSV(text));
 fresh.sheets[0].groups[0].action = 'Merge';
 fresh.sheets[0].groups[0].remarks = 'confirmed dup of ACC-001';
-fs.writeFileSync(path.join(__dirname, 'sample-report.xlsx'), XW.buildWorkbook(fresh.sheets));
+fresh.sheets[0].groups[0].peopleTags = ['Alex', 'Bob', 'Carol'];
+fresh.sheets[0].groups[0].nextStep = 'Done';
+fs.writeFileSync(path.join(__dirname, 'sample-report.xlsx'), XW.buildWorkbook(fresh.sheets.concat([reviewExportSheet(fresh)])));
 console.log('  wrote test/sample-report.xlsx');
 
 console.log('\n' + (failures === 0 ? 'ALL TESTS PASSED' : failures + ' TEST(S) FAILED'));

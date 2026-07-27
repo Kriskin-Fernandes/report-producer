@@ -183,7 +183,7 @@
   // ---- Download ------------------------------------------------------------
   els.downloadBtn.addEventListener('click', function () {
     if (!state.result) return;
-    var bytes = XW.buildWorkbook(state.result.sheets); // rebuild so edits + customization are included
+    var bytes = XW.buildWorkbook(buildExportSheets()); // 3 sheets + the Review sheet
     var blob = new Blob([bytes], { type: XLSX_MIME });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -876,6 +876,44 @@
     var found = null;
     eachGroup(function (g, si, gi) { if (g.uid === uid) found = { g: g, si: si, gi: gi }; });
     return found;
+  }
+
+  // ---- Review: export as an extra .xlsx sheet ------------------------------
+  // A synthetic sheet model: the Review customized columns plus four group-level
+  // columns — People tag1 / People tag2 / People rest / Next steps. Tags spill:
+  // 1st → tag1, 2nd → tag2, the remainder → "rest". Every group is included
+  // (the full dataset), ordered by the same five action partitions as the tab.
+  function reviewExportSheet() {
+    var displayed = RP.displayedFields(state.reviewSheet).map(RP.cloneField);
+    var extra = [
+      RP.makeField('ptag1', 'People tag1', 'data', { group: 1, fit: 1, width: 18 }),
+      RP.makeField('ptag2', 'People tag2', 'data', { group: 1, fit: 1, width: 18 }),
+      RP.makeField('prest', 'People rest', 'data', { group: 1, fit: 1, width: 24 }),
+      RP.makeField('nextStep', 'Next steps', 'data', { group: 1, fit: 1, width: 14 })
+    ];
+    var fields = displayed.concat(extra);
+    var groups = [];
+    for (var p = 0; p < REVIEW_TABLES.length; p++) {
+      allGroups().forEach(function (g) {
+        if (reviewPartition(g) !== p) return;
+        var tags = g.peopleTags || [];
+        g.ptag1 = tags[0] || '';
+        g.ptag2 = tags[1] || '';
+        g.prest = tags.slice(2).join(', ');
+        // g.nextStep already holds the value the 'nextStep' field reads.
+        groups.push(g);
+      });
+    }
+    return {
+      key: 'review', title: 'Review',
+      description: 'All account groups by assigned action — with people tags and next steps',
+      theme: RP.THEME.gray, editable: false,
+      fields: fields, displayCount: fields.length,
+      actionOptions: RP.ACTION_OPTIONS, groups: groups
+    };
+  }
+  function buildExportSheets() {
+    return state.result.sheets.concat([reviewExportSheet()]);
   }
 
   function renderReview() {
