@@ -1006,7 +1006,14 @@
     var body = [];
     groups.forEach(function (g) {
       g.rows.forEach(function (row, ri) {
-        body.push({ primary: !!row.isPrimary, first: ri === 0, cells: fields.map(function (f) { return String(RP.fieldValue(f, g, row, ri)); }) });
+        var cells = fields.map(function (f) {
+          var text = String(RP.fieldValue(f, g, row, ri));
+          // Link fields (Account ID) keep their Salesforce hyperlink so a paste
+          // into an email stays clickable.
+          var href = (f.link && text) ? (SF + encodeURIComponent(text)) : null;
+          return { text: text, href: href };
+        });
+        body.push({ primary: !!row.isPrimary, first: ri === 0, cells: cells });
       });
     });
     return { header: header, body: body };
@@ -1019,7 +1026,10 @@
     var th = m.header.map(function (h) { return '<th align="left">' + esc(h) + '</th>'; }).join('');
     var trs = m.body.map(function (r, i) {
       var sep = (r.first && i > 0) ? '<tr><td colspan="' + cols + '">&nbsp;</td></tr>' : '';
-      var tds = r.cells.map(function (c) { return '<td>' + (r.primary ? '<b>' + esc(c) + '</b>' : esc(c)) + '</td>'; }).join('');
+      var tds = r.cells.map(function (c) {
+        var inner = c.href ? '<a href="' + esc(c.href) + '">' + esc(c.text) + '</a>' : esc(c.text);
+        return '<td>' + (r.primary ? '<b>' + inner + '</b>' : inner) + '</td>';
+      }).join('');
       return sep + '<tr>' + tds + '</tr>';
     }).join('');
     return (caption ? '<p><b>' + esc(caption) + '</b></p>' : '') +
@@ -1031,7 +1041,7 @@
     lines.push(m.header.join('\t'));
     m.body.forEach(function (r, i) {
       if (r.first && i > 0) lines.push(''); // blank line between groups
-      lines.push(r.cells.join('\t'));
+      lines.push(r.cells.map(function (c) { return c.text; }).join('\t'));
     });
     return lines.join('\n');
   }

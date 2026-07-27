@@ -149,7 +149,9 @@ partitioned into five tables by their assigned action + remarks:
 - **Copy for email:** each table has a **⧉ Copy** button, and **⧉ Copy
   results** copies everything currently shown. The clipboard gets a compact,
   email-ready HTML table (plus a plain-text fallback) using your customized
-  columns, and **excludes** the People tags / Next steps columns.
+  columns, and **excludes** the People tags / Next steps columns. The
+  **Account ID** stays a clickable **Salesforce hyperlink** in the pasted
+  table.
 
 The results **fill the page** — there's nothing below them, so the tables grow
 as tall as they need and the page itself scrolls (no fixed inner scroll box).
